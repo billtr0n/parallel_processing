@@ -161,104 +161,104 @@ colorbar()
 print('ry0.pdf', '-dpdf')
 
 %%% Compute GMPE for each location in Mesh
-%med_gmpes = zeros(4,ny/2,nx/2);
-%sig_gmpes = zeros(4,ny/2,nx/2);
-%edges = [[0:1.0:30.0] inf];
-%med_min_gmpe = zeros(1, length(edges)-1);
-%med_max_gmpe = zeros(1, length(edges)-1);
-%sig_med_gmpe = zeros(1, length(edges)-1);
-%med_sim = zeros(1, length(edges)-1);
-%
-%for k=1:length(period)
-%    close all
-%    disp(['Computing GMPEs for period ', num2str(period(k))]);
-%%%% OLD TECHNIQUE %%%%%%%%%%%%%%%%
-%    for j=1:nx/2
-%        for i=1:ny/2
-%            [m_bssa, sig_bssa, per] = BSSA_2014_nga(M, period(k), rjb(i,j), Fault_Type, region, z1, Vs30);
-%            [m_cb, sig_cb, per] = CB_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), W, Ztor, Zbot, delta, lam, Fhw, Vs30, Z25, Zhyp, region);
-%            [m_cy, sig_cy, per] = CY_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), Ztor, delta, lam, z1, Vs30, Fhw, FVS30, region);
-%            [m_ask, sig_ask, per] = ASK_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), ry0(i,j), Ztor, delta, lam, fas, Hw, W, z1, Vs30, FVS30, region);
-%            
-%            % store median value
-%            med_gmpes(1,i,j) = m_bssa;
-%            med_gmpes(2,i,j) = m_cb;
-%            med_gmpes(3,i,j) = m_cy;
-%            med_gmpes(4,i,j) = m_ask;
-%            
-%            % store standard deviation
-%            sig_gmpes(1,i,j) = sig_bssa;
-%            sig_gmpes(2,i,j) = sig_cb;
-%            sig_gmpes(3,i,j) = sig_cy;
-%            sig_gmpes(4,i,j) = sig_ask;
-%
-%            figure()
-%            imagesc(squeeze(med_gmpes(1,i,j)))
-%            colorbar()
-%            print('bssa_gmpe.pdf', '-dpdf')
-%
-%            figure()
-%            imagesc(squeeze(med_gmpes(2,i,j)))
-%            colorbar()
-%            print('cb_gmpe.pdf', '-dpdf')
-%
-%            figure()
-%            imagesc(squeeze(med_gmpes(3,i,j)))
-%            colorbar()
-%            print('cy_gmpe.pdf', '-dpdf')
-%
-%            figure()
-%            imagesc(squeeze(med_gmpes(4,i,j)))
-%            colorbar()
-%            print('ask_gmpe.pdf', '-dpdf')
-%        end
-%    end
-%
-%    % alternate technique: Make array of unique distances. Calculate GMPE at those disatances, then take median, no need to repeat calculations.
-%    %[u,ia,ib] = unique(rjb);
-%    %length(ia)
-%    %rjb_gmpe = rjb(ia);
-%    %n_rjb_gmpe = length(rjb_gmpe);
-%    %for i=1:n_rjb_gmpe
-%        %[m_bssa, sig_bssa, per] = BSSA_2014_nga(M, period(k), rjb(i,j), Fault_Type, region, z1, Vs30);
-%        %[m_cb, sig_cb, per] = CB_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), W, Ztor, Zbot, delta, lam, Fhw, Vs30, Z25, Zhyp, region);
-%        %[m_cy, sig_cy, per] = CY_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), Ztor, delta, lam, z1, Vs30, Fhw, FVS30, region);
-%        %[m_ask, sig_ask, per] = ASK_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), ry0(i,j), Ztor, delta, lam, fas, Hw, W, z1, Vs30, FVS30, region);
-%        
-%        %% store median value
-%        %med_gmpes(1,i,j) = m_bssa;
-%        %med_gmpes(2,i,j) = m_cb;
-%        %med_gmpes(3,i,j) = m_cy;
-%        %med_gmpes(4,i,j) = m_ask;
-%        
-%        %% store standard deviation
-%        %sig_gmpes(1,i,j) = sig_bssa;
-%        %sig_gmpes(2,i,j) = sig_cb;
-%        %sig_gmpes(3,i,j) = sig_cy;
-%        %sig_gmpes(4,i,j) = sig_ask;
-%    %end
-%
-%    % Perform Distance Binning
-%    min_gmpe = squeeze(min(med_gmpes,[],1));
-%    max_gmpe = squeeze(max(med_gmpes,[],1));
-%    sig_gmpe = squeeze(median(sig_gmpes,1));
-%
-%    fname = sprintf('./het/gmrotD50_%05.2fHz.dat', freq(k));
-%    sim_sa = reshape(importdata(fname),nx,ny)' / 9.81;
-%    sim_sa = sim_sa(1:2:end,1:2:end); % decimate by two to reduce computations
-%    % get counts and index of the bin each member of rjb sorts into.
-%    [bc,ind] = histc(rjb, edges);
-%
-%    for i=1:length(edges)-1
-%        f_ind = find(ind == i);
-%        med_sim(i) = median(sim_sa(f_ind));
-%        med_min_gmpe(i) = median(min_gmpe(f_ind));
-%        med_max_gmpe(i) = median(max_gmpe(f_ind));
-%        sig_med_gmpe(i) = median(sig_gmpe(f_ind));
-%    end
-%
-%    edges_plot = edges(1:end-1) + 0.5; % just moves it to the midpoint dumbly
-%    out = [edges_plot', med_sim', med_min_gmpe', med_max_gmpe', sig_med_gmpe'];
-%    fout = sprintf('gmrotD50_%05.2fHz_plot.dat',freq(k));
-%    csvwrite(fout,out)
-%end
+med_gmpes = zeros(4,ny/2,nx/2);
+sig_gmpes = zeros(4,ny/2,nx/2);
+edges = [[0:1.0:30.0] inf];
+med_min_gmpe = zeros(1, length(edges)-1);
+med_max_gmpe = zeros(1, length(edges)-1);
+sig_med_gmpe = zeros(1, length(edges)-1);
+med_sim = zeros(1, length(edges)-1);
+
+for k=1:length(period)
+    close all
+    disp(['Computing GMPEs for period ', num2str(period(k))]);
+%%% OLD TECHNIQUE %%%%%%%%%%%%%%%%
+    for j=1:nx/2
+        for i=1:ny/2
+            [m_bssa, sig_bssa, per] = BSSA_2014_nga(M, period(k), rjb(i,j), Fault_Type, region, z1, Vs30);
+            [m_cb, sig_cb, per] = CB_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), W, Ztor, Zbot, delta, lam, Fhw, Vs30, Z25, Zhyp, region);
+            [m_cy, sig_cy, per] = CY_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), Ztor, delta, lam, z1, Vs30, Fhw, FVS30, region);
+            [m_ask, sig_ask, per] = ASK_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), ry0(i,j), Ztor, delta, lam, fas, Hw, W, z1, Vs30, FVS30, region);
+            
+            % store median value
+            med_gmpes(1,i,j) = m_bssa;
+            med_gmpes(2,i,j) = m_cb;
+            med_gmpes(3,i,j) = m_cy;
+            med_gmpes(4,i,j) = m_ask;
+            
+            % store standard deviation
+            sig_gmpes(1,i,j) = sig_bssa;
+            sig_gmpes(2,i,j) = sig_cb;
+            sig_gmpes(3,i,j) = sig_cy;
+            sig_gmpes(4,i,j) = sig_ask;
+
+        end
+    end
+    figure()
+    imagesc(squeeze(med_gmpes(1,:,:)))
+    colorbar()
+    print('bssa_gmpe.pdf', '-dpdf')
+
+    figure()
+    imagesc(squeeze(med_gmpes(2,:,:)))
+    colorbar()
+    print('cb_gmpe.pdf', '-dpdf')
+
+    figure()
+    imagesc(squeeze(med_gmpes(3,:,:)))
+    colorbar()
+    print('cy_gmpe.pdf', '-dpdf')
+
+    figure()
+    imagesc(squeeze(med_gmpes(4,:,:)))
+    colorbar()
+    print('ask_gmpe.pdf', '-dpdf')
+
+    % alternate technique: Make array of unique distances. Calculate GMPE at those disatances, then take median, no need to repeat calculations.
+    %[u,ia,ib] = unique(rjb);
+    %length(ia)
+    %rjb_gmpe = rjb(ia);
+    %n_rjb_gmpe = length(rjb_gmpe);
+    %for i=1:n_rjb_gmpe
+        %[m_bssa, sig_bssa, per] = BSSA_2014_nga(M, period(k), rjb(i,j), Fault_Type, region, z1, Vs30);
+        %[m_cb, sig_cb, per] = CB_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), W, Ztor, Zbot, delta, lam, Fhw, Vs30, Z25, Zhyp, region);
+        %[m_cy, sig_cy, per] = CY_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), Ztor, delta, lam, z1, Vs30, Fhw, FVS30, region);
+        %[m_ask, sig_ask, per] = ASK_2014_nga(M, period(k), rjb(i,j), rjb(i,j), rx(i,j), ry0(i,j), Ztor, delta, lam, fas, Hw, W, z1, Vs30, FVS30, region);
+        
+        %% store median value
+        %med_gmpes(1,i,j) = m_bssa;
+        %med_gmpes(2,i,j) = m_cb;
+        %med_gmpes(3,i,j) = m_cy;
+        %med_gmpes(4,i,j) = m_ask;
+        
+        %% store standard deviation
+        %sig_gmpes(1,i,j) = sig_bssa;
+        %sig_gmpes(2,i,j) = sig_cb;
+        %sig_gmpes(3,i,j) = sig_cy;
+        %sig_gmpes(4,i,j) = sig_ask;
+    %end
+
+    % Perform Distance Binning
+    min_gmpe = squeeze(min(med_gmpes,[],1));
+    max_gmpe = squeeze(max(med_gmpes,[],1));
+    sig_gmpe = squeeze(median(sig_gmpes,1));
+
+    fname = sprintf('./het/gmrotD50_%05.2fHz.dat', freq(k));
+    sim_sa = reshape(importdata(fname),nx,ny)' / 9.81;
+    sim_sa = sim_sa(1:2:end,1:2:end); % decimate by two to reduce computations
+    % get counts and index of the bin each member of rjb sorts into.
+    [bc,ind] = histc(rjb, edges);
+
+    for i=1:length(edges)-1
+        f_ind = find(ind == i);
+        med_sim(i) = median(sim_sa(f_ind));
+        med_min_gmpe(i) = median(min_gmpe(f_ind));
+        med_max_gmpe(i) = median(max_gmpe(f_ind));
+        sig_med_gmpe(i) = median(sig_gmpe(f_ind));
+    end
+
+    edges_plot = edges(1:end-1) + 0.5; % just moves it to the midpoint dumbly
+    out = [edges_plot', med_sim', med_min_gmpe', med_max_gmpe', sig_med_gmpe'];
+    fout = sprintf('gmrotD50_%05.2fHz_plot.dat',freq(k));
+    csvwrite(fout,out)
+end

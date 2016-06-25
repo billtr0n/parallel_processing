@@ -11,6 +11,10 @@ class ModelWorker( threading.Thread ):
 
         # instance variables
         self.success = False
+        self.started = False
+
+    def __nonzero__(self):
+        return self.started
         
     def init( self ):
         if self.__prepare_parameters( self.params['cwd'] ):
@@ -19,7 +23,11 @@ class ModelWorker( threading.Thread ):
 
     # overwriting threading.Thread.run
     def run( self ):
-        for t in self.tasks: t( self.params )
+        for t in self.tasks: 
+            status = t( self.params )
+            if status:    
+                # this will actually be a member of the tasks class, oneday, some day
+                self.started = True
 
     def __prepare_parameters( self, cwd ):
         from numpy import fromfile

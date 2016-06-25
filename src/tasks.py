@@ -10,10 +10,10 @@ let independent tasks start in their own threads.
 
 # TODO: Make a default tasks class that can attach parameters and what not.
 def plot_gmpe( params = None ):
-    print 'Computing NGA West2 GMPE relationships'
-    print '======================================'
     # hard code frequencies, eventhough i shouldn't
     # make more arbitrary to look at more periods when fortran code is implemented
+
+    # print 'Plotting GMPE relationships.'
     freq = [0.25, 0.5, 1.0, 2.0, 3.0, 5.0]
 
     for f in freq:
@@ -28,18 +28,23 @@ def plot_gmpe( params = None ):
             _plot_group_bias( name )
         except IOError:
             print "skipping %05.2fHz. file %s not found" % (f, name)
-            continue
 
 def calc_gmpe( params = None ):
     try:
+        # print 'Computing NGA West2 GMPE relationships.'
         os.chdir( params['cwd'] )
         out = open('gmpe_comp.log', 'wb')
+        # figure out how to return that is successfully started, callback?
         p = subprocess.Popen(["matlab", "<", params['script_name']], stdout=out, stderr=subprocess.PIPE)
         p.wait()
         os.chdir( params['home_dir'] )
         out.close()
     except Exception as e:
-        print '\n'.join([str(e), 'Unable to launch job.'])
+        print 'Unable to launch job due to error: %s' % e
+        return False
+
+    return True
+        
         
 
 """
@@ -50,27 +55,35 @@ def _plot_group_bias():
     pass
 
 def _plot_individual( name ):
-    from numpy import loadtxt
-    from matplotlib import pyplot as plt
+    try:
+        from numpy import loadtxt
+        from matplotlib.figure import Figure
+        from matplotlib.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
+        from matplotlib import pyplot as plt
 
-    fig = plt.figure()
-    data = loadtxt(name, delimiter=',')
-    bin_edges = data[:,0]
-    med_sim = data[:,1]
-    min_med_gmpe = data[:,2]
-    max_med_gmpe = data[:,3]
-    med_sig_gmpe = data[:,4]
+        fig = Figure()
+        canvas = FigureCanvas(fig)
+        data = loadtxt(name, delimiter=',')
+        bin_edges = data[:,0]
+        med_sim = data[:,1]
+        min_med_gmpe = data[:,2]
+        max_med_gmpe = data[:,3]
+        med_sig_gmpe = data[:,4]
 
-    ax = fig.add_subplot(111)
-    ax.fill_between(bin_edges, min_med_gmpe, max_med_gmpe, color='gray', alpha=0.4)
-    ax.loglog(bin_edges, med_sim, 'b')
-    ax.loglog(bin_edges, max_med_gmpe*exp(med_sig_gmpe), '--k')
-    ax.loglog(bin_edges, min_med_gmpe*exp(-med_sig_gmpe), '--k')
-    ax.set_xlim([1.0,30.0])
-    ax.set_xlabel(r'$R_{rup} (km) $')
-    ax.set_ylabel('SA (g)')
-    basename = name[:-4] # strip off file extension
-    fig.savefig('./' + fout + '.pdf' )
-    fig.close()
+        ax = fig.add_subplot(111)
+        ax.fill_between(bin_edges, min_med_gmpe, max_med_gmpe, color='gray', alpha=0.4)
+        ax.loglog(bin_edges, med_sim, 'b')
+        ax.loglog(bin_edges, max_med_gmpe*exp(med_sig_gmpe), '--k')
+        ax.loglog(bin_edges, min_med_gmpe*exp(-med_sig_gmpe), '--k')
+        ax.set_xlim([1.0,30.0])
+        ax.set_xlabel(r'$R_{rup} (km) $')
+        ax.set_ylabel('SA (g)')
+        basename = name[:-4] # strip off file extension
+        fig.savefig('./' + fout + '.pdf' )
+    except Exception as e:
+        print 'Unable to launch job due to error: %s' % e
+        return False
+
+    return True
 
 
