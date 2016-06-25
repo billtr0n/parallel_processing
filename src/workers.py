@@ -18,29 +18,16 @@ class ModelWorker( threading.Thread ):
         return self.success
 
     # overwriting threading.Thread.run
-    def run( self, cwd ):
-        # needs task class
-        for task in tasks:
-            task( params = params )
+    def run( self ):
+        for t in self.tasks: t( self.params )
 
     def __prepare_parameters( self, cwd ):
         from numpy import fromfile
         par = {}
-        # copy necessary files
-        try:
-            # temporary until i get fortran codes implemented
-            shutil.copy( '../utils/gmpe_calc.m', cwd )
-            shutil.copy( '../utils/ASK_2014_nga.m', cwd )
-            shutil.copy( '../utils/BSSA_2014_nga.m', cwd)
-            shutil.copy( '../utils/CB_2014_nga.m', cwd )
-            shutil.copy( '../utils/CY_2014_nga.m', cwd )
-        except IOError:
-            print 'unable to copy necessary files.'
-            return False
 
-        # try getting the parameters
+        # read default parameters
         try:
-            with open(os.path.join(cwd, 'params.txt'),'r') as file:
+            with open(os.path.join(self.params['root_dir'], 'params.txt'), 'r') as file:
                 temp = file.readlines()
             for line in temp:
                 line = line.split()
@@ -68,12 +55,30 @@ class ModelWorker( threading.Thread ):
             print 'unable to determine fault extent. skipping model...'
             return False
 
+        # copy necessary files
+        try:
+            # temporary until i get fortran codes implemented
+            shutil.copy( os.path.join(self.params['script_dir'], 'gmpe_calc.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'ASK_2014_nga.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'BSSA_2014_nga.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'CB_2014_nga.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'CY_2014_nga.m'), cwd )
+        except IOError:
+            print 'unable to copy necessary files.'
+            return False
+
         # now write the parameters file
         # when i get fortran routines, no reason to write file anymore
-        with open(os.path.join(cwd, 'params.txt'),'w') as file:
-            for k,v in par.iteritems():
-                file.write(k + ' ' + str(v) + '\n')
-        return self.success
+        try:
+            with open(os.path.join(cwd, 'params.txt'), 'w') as file:
+                for k,v in par.iteritems():
+                    file.write(k + ' ' + str(v) + '\n')
+        except IOError:
+            print 'unable to write to params.txt file'
+            return False
+
+        # made it through the gauntlet
+        return True
 
     def __read_magnitude( self, cwd ):
         import os
@@ -97,9 +102,7 @@ class ModelWorker( threading.Thread ):
         psv = fromfile( os.path.join(cwd, 'out/psv'), 'f' ).reshape([nz,nx])
         y,x = where( psv > 1.0 ) # returns inds where condition is true
         strtx = x.min()
-        print strtx
         endx = x.max()
-        print endx
         nflt = floor( (endx - strtx) / 2 )
         if nflt < 0:
             print 'negative fault length, something is wrong.'
@@ -121,16 +124,18 @@ class WorkerGroup( object ):
         for job in self.jobs:
             yield job
 
-    def __bool__(self):
+    def __nonzero__(self):
         if self.jobs:
             return True
         else:
             return False
 
-    def add( job ):
+    def add( self, job ):
         self.jobs.append( job )
 
-    def run_all():
-        for job in self.jobs: job.start()
-        for job in self.jobs: job.join()
+    def run_wait_all( self ):
+        for p in self.jobs: p.start()
+        for p in self.jobs: p.join()
 
+    def wait_all( self ):
+        for p in self.jobs: p.join()

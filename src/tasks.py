@@ -32,17 +32,15 @@ def plot_gmpe( params = None ):
 
 def calc_gmpe( params = None ):
     try:
-        # have to move into model directory bc matlab is dumb
-        home_dir = os.getcwd()
         os.chdir( params['cwd'] )
         out = open('gmpe_comp.log', 'wb')
         p = subprocess.Popen(["matlab", "<", params['script_name']], stdout=out, stderr=subprocess.PIPE)
         p.wait()
+        os.chdir( params['home_dir'] )
         out.close()
-        os.chdir( home_dir )
-    except:
-        print 'could not launch calculation.'
-    return False
+    except Exception as e:
+        print '\n'.join([str(e), 'Unable to launch job.'])
+        
 
 """
 Private helping functions below.
