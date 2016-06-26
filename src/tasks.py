@@ -23,7 +23,7 @@ def plot_gmpe( params = None ):
 
     print 'Plotting GMPE relationships.'
     freq = [ 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
-    freq = [ 0.25 ]
+    # freq = [ 0.25 ]
 
     for f in freq:
         name = os.path.join( params['cwd'], 'gmrotD50_%05.2fHz_plot.dat' % f )
@@ -67,35 +67,35 @@ def _plot_gmpe_group_bias( name ):
 # even break that up into different submodules
 # that way whenever i want to do anything, i can import taskmanager and geotools
 def _plot_gmpe_individual( name ):
-    # try:
-    from numpy import loadtxt, exp
-    from matplotlib.figure import Figure
-    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
+    try:
+        from numpy import loadtxt, exp
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
 
-    fig = Figure()
-    canvas = FigureCanvas(fig)
-    data = loadtxt(name, delimiter=',')
+        fig = Figure()
+        canvas = FigureCanvas(fig)
+        data = loadtxt(name, delimiter=',')
 
-    # read data
-    bin_edges = data[:,0]
-    med_sim = data[:,1]
-    min_med_gmpe = data[:,2]
-    max_med_gmpe = data[:,3]
-    med_sig_gmpe = data[:,4]
+        # read data
+        bin_edges = data[:,0]
+        med_sim = data[:,1]
+        min_med_gmpe = data[:,2]
+        max_med_gmpe = data[:,3]
+        med_sig_gmpe = data[:,4]
 
-    ax = fig.add_subplot(111)
-    ax.fill_between(bin_edges, min_med_gmpe, max_med_gmpe, color='gray', alpha=0.4)
-    ax.loglog(bin_edges, med_sim, 'b')
-    ax.loglog(bin_edges, max_med_gmpe*exp(med_sig_gmpe), '--k')
-    ax.loglog(bin_edges, min_med_gmpe*exp(-med_sig_gmpe), '--k')
-    ax.set_xlim([1.0,30.0])
-    ax.set_xlabel( r'$R_{rup} (km) $' )
-    ax.set_ylabel( 'SA (g)' )
-    basename = name[:-4] # strip off file extension
-    # fig.savefig( basename + '.pdf' )
-    # # except Exception as e:
-    #     print 'Unable to launch job due to error: %s' % e
-    #     return False
+        ax = fig.add_subplot(111)
+        ax.fill_between(bin_edges, min_med_gmpe, max_med_gmpe, color='gray', alpha=0.4)
+        ax.loglog(bin_edges, med_sim, 'b')
+        ax.loglog(bin_edges, max_med_gmpe*exp(med_sig_gmpe), '--k')
+        ax.loglog(bin_edges, min_med_gmpe*exp(-med_sig_gmpe), '--k')
+        ax.set_xlim([1.0,30.0])
+        ax.set_xlabel( r'$R_{rup} (km) $' )
+        ax.set_ylabel( 'SA (g)' )
+        basename = name[:-4] # strip off file extension
+        fig.savefig( basename + '.pdf' )
+    except Exception as e:
+        print 'Unable to launch job due to error: %s' % e
+        return False
 
     return True
 

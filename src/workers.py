@@ -1,8 +1,8 @@
 import shutil
 import os
-import threading
+from multiprocessing import Process
 
-class ModelWorker( threading.Thread ):
+class ModelWorker( Process ):
     def __init__(self, tasks, params=None, *args, **kwargs):
         super(ModelWorker, self).__init__(*args, **kwargs)
         # assign arguments
