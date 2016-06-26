@@ -9,6 +9,9 @@ class ModelWorker( threading.Thread ):
         self.params = params
         self.tasks = tasks
 
+        # will be used to help other workers out, much later 
+        # self.state = ('IDLE', 'RUNNING') 
+
         # instance variables
         self.success = False
         self.started = False
@@ -16,7 +19,7 @@ class ModelWorker( threading.Thread ):
     def __nonzero__(self):
         return self.started
         
-    def init( self ):
+    def ready( self ):
         if self.__prepare_parameters( self.params['cwd'] ):
             self.success = True
         return self.success
@@ -120,10 +123,8 @@ class ModelWorker( threading.Thread ):
 
 class WorkerGroup( object ):
     """
-    this needs work, i don't know what im going to use it for
-    but i know it will be necessary for more functionality later, maybe managing the
-    processes better when i need it, right now it's probably dumber than python's list class
-    but that's okay.
+    this needs work, it will be used to associated workers on similar tasks to manage them more
+    efficiently.
     """
     def __init__(self):
         self.jobs = []

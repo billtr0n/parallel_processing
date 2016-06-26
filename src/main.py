@@ -20,12 +20,12 @@ def main():
     # this will also go away when this is set to run in single directory, or will be in python
     # config file with other configurations
     home_dir = os.getcwd()
-    #params = {
+    # params = {
     #          'root_dir'    : '/media/sf_Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
     #          'script_dir'  : '/media/sf_Dropbox/Current/processing/utils',
     #          'script_name' : 'gmpe_calc.m',
     #          'home_dir'    : home_dir,
-    #         }
+    #          }
     params = {
              'root_dir'    : '/Users/williamsavran/Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
              'script_dir'  : '/Users/williamsavran/Dropbox/Current/processing/utils',
@@ -40,16 +40,19 @@ def main():
     # we don't care what the name of the folder is.
     group = WorkerGroup()
     # implement task class with different kinds of tasks that can be done
-    tasks = [calc_gmpe, ]
+    # tasks can be higher level such as, process_dynamic_rupture_and_wave_propagation, or,
+    # process_dynamic_rupture, or process_wave_propagation. 
+    tasks = [plot_gmpe, ]
     for d in os.listdir(params['root_dir']):
         cwd = os.path.join(params['root_dir'], d)
         # needed for matlab script, can remove when that is done
         # we only care its a directory
+        # this will change with different task types
         if os.path.isdir( cwd ):
             params['cwd'] = cwd
             # workers must subclass thread, and implement the init() method
             job = ModelWorker( tasks, params=params )
-            if job.init():
+            if job.ready():
                 # add to workergroup
                 # workergroup will be used to manage the workers, rename?
                 # workergroup might give functionality, ie implement task queues and stuff

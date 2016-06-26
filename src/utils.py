@@ -637,6 +637,7 @@ def rotate_back_azimuth(xt,yt,ba):
 
 """
 Code ported to python from Bo Jacobsen @ Aarhus University by William Savran
+generates realization of von karman process in 1d using autocorrelations.
 """
 def selfsimilar(rs, nu, L):
     rho = np.spacing(1) + np.abs(rs)/L;
@@ -655,3 +656,27 @@ def realize_von_karman(rs, nu, L):
     sqrtC_a = np.matrix(v)*np.matrix(np.diag(np.sqrt(w)))*np.matrix(v).T
     d_Nsim = np.matrix(sqrtC_a) * np.matrix(randn(N,1))
     return d_Nsim
+
+
+def get_backends():
+    """ copied from pelson's comment @ http://stackoverflow.com/questions/5091993/list-of-all-available-matplotlib-backends """
+    import matplotlib.backends
+    import os.path
+
+    def is_backend_module(fname):
+        """Identifies if a filename is a matplotlib backend module"""
+        return fname.startswith('backend_') and fname.endswith('.py')
+
+    def backend_fname_formatter(fname): 
+        """Removes the extension of the given filename, then takes away the leading 'backend_'."""
+        return os.path.splitext(fname)[0][8:]
+
+    # get the directory where the backends live
+    backends_dir = os.path.dirname(matplotlib.backends.__file__)
+
+    # filter all files in that directory to identify all files which provide a backend
+    backend_fnames = filter(is_backend_module, os.listdir(backends_dir))
+
+    backends = [backend_fname_formatter(fname) for fname in backend_fnames]
+
+    print backends

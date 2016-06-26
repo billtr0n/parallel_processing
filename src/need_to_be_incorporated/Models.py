@@ -12,9 +12,9 @@ class TimeSeries( object ):
             data = args[0]
             # fidelity checks, might be missing some? clean this up?
             if type(data) != dict:
-                raise TypeError("data must be of dict type. The dict must contain\n          \
-                                 at least one time-series (type=numpy.ndarray) and its\n     \
-                                 associated time vector (type=numpy.ndarray) called 'time'.")
+                raise TypeError("""data must be of dict type. The dict must contain
+                                 at least one time-series (type=numpy.ndarray) and its
+                                 associated time vector (type=numpy.ndarray) called 'time'.""")
             if 'time' not in data.keys():
                 raise ValueError("Time not defined in the input.")
             if len(data.keys()) < 2:
@@ -33,11 +33,14 @@ class TimeSeries( object ):
         for key, val in data.iteritems():
             # last fidelity check
             if not isinstance(val, ndarray):
-                raise TypeError("data must be of dict type. The dict must contain            \
-                                 at least one time-series (type=numpy.ndarray) and its       \
-                                 associated time vector (type=numpy.ndarray) called 'time'.")
-            # make sure the values are sensible first?
-            setattr(self, key, val)
+                raise TypeError("""data must be of dict type. The dict must contain          
+                                 at least one time-series (type=numpy.ndarray) and its       
+                                 associated time vector (type=numpy.ndarray) called 'time'.""")
+            # make sure the values are sensible first, but now we just perform a catch-all
+            try:
+                setattr(self, key, val)
+            except Exception as e:
+                print "Unable to set attribute %s because %s" % (key, str(e)) 
                 
             
         # handle arbirary metadata, defaults here are used for plotting. more to come?
