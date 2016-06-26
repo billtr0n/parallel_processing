@@ -41,7 +41,7 @@ def plot_gmpe( params = None ):
 
 def calc_gmpe( params = None ):
     try:
-        # print 'Computing NGA West2 GMPE relationships.'
+        print 'Computing NGA West2 GMPE relationships.'
         os.chdir( params['cwd'] )
         out = open('gmpe_comp.log', 'wb')
         # figure out how to return that is successfully started, callback?

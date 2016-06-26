@@ -8,6 +8,7 @@ class ModelWorker( Process ):
         # assign arguments
         self.params = params
         self.tasks = tasks
+        
 
         # will be used to help other workers out, much later 
         # self.state = ('IDLE', 'RUNNING') 
@@ -121,7 +122,7 @@ class ModelWorker( Process ):
         return { 'strtx' : strtx, 'nflt' : nflt }
             
 
-class WorkerGroup( object ):
+class WorkGroup( object ):
     """
     this needs work, it will be used to associated workers on similar tasks to manage them more
     efficiently.
@@ -134,10 +135,9 @@ class WorkerGroup( object ):
             yield job
 
     def __nonzero__(self):
-        if self.jobs:
+        if self.jobs: 
             return True
-        else:
-            return False
+        return False
 
     def add( self, job ):
         self.jobs.append( job )

@@ -1,7 +1,7 @@
 import os
 import subprocess
 
-from workers import ModelWorker, WorkerGroup
+from workers import ModelWorker, WorkGroup
 from tasks import plot_gmpe, calc_gmpe
 
 # implement way to manage the number of threads that are being launched, so that only n threads can be active
@@ -38,11 +38,11 @@ def main():
     # will eventually define tasks with dependencies
     # or break them down into groups that can be executed concurrently.
     # we don't care what the name of the folder is.
-    group = WorkerGroup()
+    group = WorkGroup()
     # implement task class with different kinds of tasks that can be done
     # tasks can be higher level such as, process_dynamic_rupture_and_wave_propagation, or,
     # process_dynamic_rupture, or process_wave_propagation. 
-    tasks = [plot_gmpe, ]
+    tasks = [calc_gmpe, plot_gmpe, ]
     for d in os.listdir(params['root_dir']):
         cwd = os.path.join(params['root_dir'], d)
         # needed for matlab script, can remove when that is done

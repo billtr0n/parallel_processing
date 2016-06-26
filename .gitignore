@@ -1,4 +1,7 @@
 *.txt
+*.pyc
+todo
+notes
 *.asc
 
 

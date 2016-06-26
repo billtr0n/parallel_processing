@@ -9,7 +9,7 @@ related time-series.
 class TimeSeries( object ):
     def __init__(self, *args, **kwargs):
         if args:
-            data = args[0]
+            self.data = args[0]
             # fidelity checks, might be missing some? clean this up?
             if type(data) != dict:
                 raise TypeError("""data must be of dict type. The dict must contain
@@ -36,11 +36,13 @@ class TimeSeries( object ):
                 raise TypeError("""data must be of dict type. The dict must contain          
                                  at least one time-series (type=numpy.ndarray) and its       
                                  associated time vector (type=numpy.ndarray) called 'time'.""")
-            # make sure the values are sensible first, but now we just perform a catch-all
-            try:
-                setattr(self, key, val)
-            except Exception as e:
-                print "Unable to set attribute %s because %s" % (key, str(e)) 
+
+            """ store all the data in the data dict not as instance variables  """
+            # # make sure the values are sensible first, but now we just perform a catch-all
+            # try:
+            #     setattr(self, key, val)
+            # except Exception as e:
+            #     print "Unable to set attribute %s because %s" % (key, str(e)) 
                 
             
         # handle arbirary metadata, defaults here are used for plotting. more to come?
@@ -66,7 +68,10 @@ SeismogramFigure Class
 Wrapper to matplotlib class, which provides functionality for plotting seismograms.
 
 """
-from matplotlib.pyplot import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvasTkAgg
+from matplotlib.Figure import Figure
+from matplotlib.gridspec import GridSpec
+
 class SeismogramFigure( Figure ):
     
     def __init__(self, kind='default',  *args,**kwargs):
@@ -74,29 +79,32 @@ class SeismogramFigure( Figure ):
         self.subplots = {}
         
     def initialize_subplots( self ):
-        from matplotlib.pyplot import subplot2grid
+        gs = GridSpec( 3, 4 )
         # X componet
-        self.subplots['xts']  = subplot2grid((3,4),(0,0), colspan=2)
-        self.subplots['xke']  = subplot2grid((3,4),(0,2))
-        self.subplots['xfas'] = subplot2grid((3,4),(0,3))
+        self.subplots['xts']  = gs.new_subplotspec( (0,0), 1, 2 )
+        self.subplots['xke']  = gs.new_subplotspec( (0,2), 1, 1 )
+        self.subplots['xfas'] = gs.new_subplotspec( (0,3), 1, 1 )
         
         # Y component
-        self.subplots['yts']  = subplot2grid((3,4),(1,0), colspan=2)
-        self.subplots['yke']  = subplot2grid((3,4),(1,2))
-        self.subplots['yfas'] = subplot2grid((3,4),(1,3))
+        self.subplots['yts']  = gs.new_subplotspec( (1,0), 1, 2 )
+        self.subplots['yke']  = gs.new_subplotspec( (1,2), 1, 1 )
+        self.subplots['yfas'] = gs.new_subplotspec( (1,3), 1, 1 )
         
         # Z component
-        self.subplots['zts']  = subplot2grid((3,4),(1,0), colspan=2)
-        self.subplots['zke']  = subplot2grid((3,4),(1,2))
-        self.subplots['zfas'] = subplot2grid((3,4),(1,3))
+        self.subplots['zts']  = gs.new_subplotspec( (1,0), 1, 2 )
+        self.subplots['zke']  = gs.new_subplotspec( (1,2), 1, 1 )
+        self.subplots['zfas'] = gs.new_subplotspec( (1,3), 1, 1 )
+
+        for k, v in self.subplots.iteritems():
+            self.subplots[key] = self.add_subplot( val ) 
         return 
         
     def plot_all( self, s ):
         # obviously need some error checking here
         # plot seismograms
-        self.subplots['xts'].plot(s.time, s.x)
-        self.subplots['yts'].plot(s.time, s.y)
-        self.subplots['zts'].plot(s.time, s.z)
+        self.subplots['xts'].plot(s.time, s.data(comp='x'))
+        self.subplots['yts'].plot(s.time, s.data(comp='y'))
+        self.subplots['zts'].plot(s.time, s.data(comp='z'))
         
         # plot kinetic energy
         self.subplots['xke'].plot(s.time, s.kinetic_energy(comp='x'))
