@@ -16,7 +16,6 @@ def process_gmpe( params = None ):
     return
 
 
-# TODO: Make a default tasks class that can attach parameters and what not.
 def plot_gmpe( params = None ):
     # hard code frequencies, eventhough i shouldn't
     # make more arbitrary to look at more periods when fortran code is implemented
@@ -60,8 +59,9 @@ def calc_gmpe( params = None ):
 Private helping functions below.
 """
 def _plot_gmpe_group_bias( name ):
-    # TODO: Stub function
-    pass
+    # some things we need these can go into params
+    distances = [10.0, 30.0]
+    freq = [ 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
 
 # potential refactoring into utils.py
 # even break that up into different submodules
