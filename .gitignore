@@ -1,8 +1,13 @@
 .DS_Store
 *.txt
-*.pyc
+__pycache__/
+*.py[cod]
+*$py.class
 todo
 notes
 *.asc
 
+# Pycharm
+*.iml
+.idea/
 
