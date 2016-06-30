@@ -30,7 +30,6 @@ def plot_gmpe( params = None ):
         # we need to define 1d, 2d, and 3d data types. 3d data types will be at the latter.
         try:
             __plot_gmpe_individual( name )
-            __plot_gmpe_group_bias( name )
         except IOError:
             print "skipping %05.2fHz. file %s not found" % (f, name)
             raise
@@ -56,16 +55,86 @@ def calc_gmpe( params = None ):
 """
 Private helping functions below.
 """
-<<<<<<< HEAD
-def _plot_gmpe_group_bias( name ):
-    # some things we need these can go into params
-    distances = [10.0, 30.0]
-    freq = [ 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
-=======
-def __plot_gmpe_group_bias( name ):
-    # TODO: Stub function
-    pass
->>>>>>> feature/work_queue
+def plot_gmpe_group_bias( params ):
+    from numpy import log, loadtxt, array, where
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
+
+    freqs = [0.25, 0.5, 1.0, 2.0, 3.0, 5.0]
+    distances = [10, 15, 20, 25, 30]
+
+    
+    try:
+        # create data structure to hold bias results
+        bias = {}
+        for dist in distances: 
+            bias[dist] = []
+        for freq in freqs:
+            bias[freq] = []
+
+        # loop through all the directories
+        for d in os.listdir( params['root_dir'] ):
+            cwd = os.path.join( params['root_dir'], d )
+            if os.path.isdir( cwd ):
+                for freq in freqs:
+                    filename = os.path.join(cwd, 'gmrotD50_%05.2fHz_plot.dat' % freq)
+                    data = loadtxt(filename, delimiter=',' )
+                    gmpe_mid = (data[:,2] + data[:,3]) / 2
+                    log_bias = log(data[:,1] / gmpe_mid)
+                    bias[freq].append(log_bias)
+                    for dist in distances:
+                        ind = where(data[:,0] == dist + 0.5)
+                        gmpe_mid = (data[ind,2] + data[ind,3]) / 2
+                        log_bias = log(data[ind,1] / gmpe_mid)
+                        bias[dist].append(log_bias)
+
+        # make figure
+        for key in bias.keys():
+            if key in freqs:
+                # print key
+                fig = Figure()
+                canvas = FigureCanvas(fig)
+                ax = fig.add_subplot(111)
+                ax.set_title( 'log(sim/gmpe) vs. distance @ %s Hz' % key )
+                ax.set_xlabel('Distance (km)')
+                ax.set_ylabel('log(sim/gmpe)')
+
+                # plot horizontal line at 0
+                ax.axhline(y=0, color='black')
+
+                # plot bias and error bars
+                b = array(bias[key])
+                avgb = b.mean(axis=0)
+                minb = b.min(axis=0)
+                maxb = b.max(axis=0)
+                ylower = avgb - minb
+                yupper = maxb - avgb
+                ax.errorbar(data[:,0], avgb, yerr=[ylower,yupper], fmt='o', ecolor='g', capthick=2)
+                fig.savefig( os.path.join(params['root_dir'], 'dist_bias_%shz.pdf' % key ) )
+
+            if key in distances:
+                fig = Figure()
+                canvas = FigureCanvas(fig)
+                ax = fig.add_subplot(111)
+                ax.set_title('log(sim/gmpe) vs. period @ %s km' % key )
+                ax.set_xlabel('Period (s)')
+                ax.set_ylabel('log(sim/gmpe)')
+
+                # plot horizontal line at 0
+                ax.axhline(y=0, color='black')
+                b = array(bias[key])
+                b = b.reshape([b.size/len(freqs),len(freqs)])
+                
+                # plot bias and error bars
+                avgb = b.mean(axis=0)
+                minb = b.min(axis=0)
+                maxb = b.max(axis=0)
+                ylower = avgb - minb
+                yupper = maxb - avgb
+                ax.errorbar(1./array(freqs), avgb, yerr=[ylower,yupper], fmt='o', ecolor='g', capthick=2)
+                fig.savefig(os.path.join(params['root_dir'], 'dist_freq_%skm.pdf' % key) )
+    except Exception as e:
+        print 'exception: %s' % str(e)
 
 # potential refactoring into utils.py
 # even break that up into different submodules

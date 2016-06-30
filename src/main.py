@@ -3,7 +3,7 @@ import subprocess
 
 from workers import SimpleTask
 from managers import SimpleTaskWorkerManager  
-from tasks import test_task
+from tasks import plot_gmpe, plot_gmpe_group_bias
 
 # TODO: implement some type of logging information
 # TODO: implement other tasks.
@@ -28,11 +28,14 @@ def main():
     #          'home_dir'    : home_dir,
     #          }
 
+    """ get access to a task manager """
     group = SimpleTaskWorkerManager( max_workers = 8 )
-    # tasks should be functions or implement __call__.
-    tasks_functions = [
-                      'plot_gmpe',
-                      ]
+
+    """ define tasks that are applied to each simulation """
+    individual_tasks = [
+                        #plot_gmpe,
+                        #calc_gmpe,
+                       ]
     for d in os.listdir( params['root_dir'] ):
         cwd = os.path.join( params['root_dir'], d )
         if os.path.isdir( cwd ):
@@ -41,6 +44,9 @@ def main():
             for task in tasks:
                 if task.ready():
                     group.add_task_to_queue( task )
+
+    """ add task that only gets applied once """
+    group.add_task_to_queue( SimpleTask( plot_gmpe_group_bias, params=params ) )
     group.start_working()              
     group.wait_all()
     print 'All Finished!'
