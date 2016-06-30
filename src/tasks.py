@@ -61,7 +61,7 @@ def plot_gmpe_group_bias( params ):
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
 
     freqs = [0.25, 0.5, 1.0, 2.0, 3.0, 5.0]
-    distances = [10, 15, 20, 25, 30]
+    distances = [9.5, 14.5, 19.5, 24.5, 29.5]
 
     
     try:
@@ -83,7 +83,7 @@ def plot_gmpe_group_bias( params ):
                     log_bias = log(data[:,1] / gmpe_mid)
                     bias[freq].append(log_bias)
                     for dist in distances:
-                        ind = where(data[:,0] == dist + 0.5)
+                        ind = where(data[:,0] == dist)
                         gmpe_mid = (data[ind,2] + data[ind,3]) / 2
                         log_bias = log(data[ind,1] / gmpe_mid)
                         bias[dist].append(log_bias)
