@@ -2,19 +2,16 @@ import os
 import subprocess
 
 """
-Define tasks here.
-
-Notes: initially tasks are defined to operate sequentially, eventually i will want to 
-let independent tasks start in their own threads.
+Define tasks here. 
 """
 def process_gmpe( params = None ):
-    if calc_gmpe( params = params ):
-        try:
-            plot_gmpe( params=params )
-        except Exception as e:
-            print 'could not plot gmpe because %s' % e
-    return
-
+    if self.__prepare_parameters( self.params['cwd'] ):
+        if calc_gmpe( params = params ):
+            try:
+                plot_gmpe( params=params )
+            except Exception as e:
+                print 'could not plot gmpe because %s' % e
+                raise
 
 def plot_gmpe( params = None ):
     # hard code frequencies, eventhough i shouldn't
@@ -32,11 +29,12 @@ def plot_gmpe( params = None ):
         # probably one level of abstract above this. ie "plot_gmpe" would be alongside plot_sa and plot_pga, the latter 
         # we need to define 1d, 2d, and 3d data types. 3d data types will be at the latter.
         try:
-            _plot_gmpe_individual( name )
-            _plot_gmpe_group_bias( name )
+            __plot_gmpe_individual( name )
+            __plot_gmpe_group_bias( name )
         except IOError:
             print "skipping %05.2fHz. file %s not found" % (f, name)
-            raise 
+            raise
+
 
 def calc_gmpe( params = None ):
     try:
@@ -45,28 +43,34 @@ def calc_gmpe( params = None ):
         out = open('gmpe_comp.log', 'wb')
         # figure out how to return that is successfully started, callback?
         p = subprocess.Popen( ["matlab", "<", params['script_name']], stdout=out, stderr=subprocess.PIPE)
-        p.wait()
+        # p.wait()
         os.chdir( params['home_dir'] )
         out.close()
     except Exception as e:
         # print 'Unable to launch job due to error: %s' % e
         return False
+    return
 
-    return True
         
 
 """
 Private helping functions below.
 """
+<<<<<<< HEAD
 def _plot_gmpe_group_bias( name ):
     # some things we need these can go into params
     distances = [10.0, 30.0]
     freq = [ 0.25, 0.5, 1.0, 2.0, 3.0, 5.0 ]
+=======
+def __plot_gmpe_group_bias( name ):
+    # TODO: Stub function
+    pass
+>>>>>>> feature/work_queue
 
 # potential refactoring into utils.py
 # even break that up into different submodules
 # that way whenever i want to do anything, i can import taskmanager and geotools
-def _plot_gmpe_individual( name ):
+def __plot_gmpe_individual( name ):
     try:
         from numpy import loadtxt, exp
         from matplotlib.figure import Figure
@@ -100,3 +104,94 @@ def _plot_gmpe_individual( name ):
     return True
 
 
+    def __prepare_parameters( self, cwd ):
+        from numpy import fromfile
+        par = {}
+
+        # read default parameters
+        try:
+            with open(os.path.join(self.params['root_dir'], 'params.txt'), 'r') as file:
+                temp = file.readlines()
+            for line in temp:
+                line = line.split()
+                if line:
+                     key = line[0] 
+                     val = line[1]
+                     par[key] = val
+        except IOError:
+            print '\tERROR: unable to read params.txt file.' 
+            return False
+
+        # try reading the magnitude
+        try:
+            mw = self.__read_magnitude( cwd )
+            par.update(mw)
+        except IOError:
+            print '\tERROR: unable to find magnitude file.'
+            return False
+
+        # try getting the extent of the fault
+        try:
+            extent = self.__get_fault_extent( cwd, par )
+            par.update(extent)
+        except IOError:
+            print 'unable to determine fault extent. skipping model...'
+            return False
+
+        # copy necessary files
+        try:
+            # temporary until i get fortran codes implemented
+            shutil.copy( os.path.join(self.params['script_dir'], 'gmpe_calc.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'ASK_2014_nga.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'BSSA_2014_nga.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'CB_2014_nga.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'CY_2014_nga.m'), cwd )
+        except IOError:
+            print 'unable to copy necessary files.'
+            return False
+
+        # now write the parameters file
+        # when i get fortran routines, no reason to write file anymore
+        try:
+            with open(os.path.join(cwd, 'params.txt'), 'w') as file:
+                for k,v in par.iteritems():
+                    file.write(k + ' ' + str(v) + '\n')
+        except IOError:
+            print 'unable to write to params.txt file'
+            return False
+
+        # made it through the gauntlet
+        return True
+
+    def __read_magnitude( self, cwd ):
+        import os
+        from numpy import fromfile, where
+
+        # try finding that file anywhere in the model directory
+        for root, dirs, files in os.walk( cwd ):
+            for name in files:
+                if name == 'mw':
+                    mw = fromfile(os.path.join(root, name),'f')[-1]
+                    return { 'mw' : mw }
+        raise IOError
+
+    def __get_fault_extent( self, cwd, par ):
+        import os
+        from numpy import fromfile, where, floor
+
+        nx = int(par['fltnx'])
+        nz = int(par['fltnz'])
+
+        psv = fromfile( os.path.join(cwd, 'out/psv'), 'f' ).reshape([nz,nx])
+        y,x = where( psv > 1.0 ) # returns inds where condition is true
+        strtx = x.min()
+        endx = x.max()
+        nflt = floor( (endx - strtx) / 2 )
+        if nflt < 0:
+            print 'negative fault length, something is wrong.'
+            raise ValueError
+        return { 'strtx' : strtx, 'nflt' : nflt }
+
+def test_task( params ):
+    print 'testing.'
+    return

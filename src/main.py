@@ -1,73 +1,48 @@
 import os
 import subprocess
 
-from workers import ModelWorker, WorkGroup
-from tasks import plot_gmpe, calc_gmpe
-
-# implement way to manage the number of threads that are being launched, so that only n threads can be active
-# at any given time, needs to keep track of the threads that are being launched by each worker.
+from workers import SimpleTask
+from managers import SimpleTaskWorkerManager  
+from tasks import test_task
 
 # TODO: implement some type of logging information
-
-# Tasks:
-# TODO: implement making other types of figures.
+# TODO: implement other tasks.
 # TODO: incorporate seismogram class into it, and custom figure types
-# TODO: commit information about models to the database (another task).
-# TODO: figure out how to use web.py framework to server jinja template
+# TODO: commit information about models to the database (clean-up process).
+# TODO: design templates to show models
+# TODO: straighten out if tasks should return true or false or raise exception
 
 def main():
-    # this dict is used to pass arguments needed for tasks, tasks should be a function
-    # this will also go away when this is set to run in single directory, or will be in python
-    # config file with other configurations
+    # this dict is used to pass arguments needed for tasks
     home_dir = os.getcwd()
-    # params = {
-    #          'root_dir'    : '/media/sf_Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
-    #          'script_dir'  : '/media/sf_Dropbox/Current/processing/utils',
-    #          'script_name' : 'gmpe_calc.m',
-    #          'home_dir'    : home_dir,
-    #          }
     params = {
-             'root_dir'    : '/Users/williamsavran/Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
-             'script_dir'  : '/Users/williamsavran/Dropbox/Current/processing/utils',
+             'root_dir'    : '/media/sf_Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
+             'script_dir'  : '/media/sf_Dropbox/Current/processing/utils',
              'script_name' : 'gmpe_calc.m',
              'home_dir'    : home_dir,
              }
+    # params = {
+    #          'root_dir'    : '/Users/williamsavran/Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
+    #          'script_dir'  : '/Users/williamsavran/Dropbox/Current/processing/utils',
+    #          'script_name' : 'gmpe_calc.m',
+    #          'home_dir'    : home_dir,
+    #          }
 
-    # this will be able to intelliegently manage tasks
-    # initially assume all tasks on each model are sequential
-    # will eventually define tasks with dependencies
-    # or break them down into groups that can be executed concurrently.
-    # we don't care what the name of the folder is.
-    group = WorkGroup()
-    # implement task class with different kinds of tasks that can be done
-    # tasks can be higher level such as, process_dynamic_rupture_and_wave_propagation, or,
-    # process_dynamic_rupture, or process_wave_propagation. 
-    tasks = [calc_gmpe, plot_gmpe, ]
-    for d in os.listdir(params['root_dir']):
-        cwd = os.path.join(params['root_dir'], d)
-        # needed for matlab script, can remove when that is done
-        # we only care its a directory
-        # this will change with different task types
+    group = SimpleTaskWorkerManager( max_workers = 8 )
+    # tasks should be functions or implement __call__.
+    tasks_functions = [
+                      'plot_gmpe',
+                      ]
+    for d in os.listdir( params['root_dir'] ):
+        cwd = os.path.join( params['root_dir'], d )
         if os.path.isdir( cwd ):
             params['cwd'] = cwd
-            # workers must subclass thread, and implement the init() method
-            job = ModelWorker( tasks, params=params )
-            if job.ready():
-                # add to workergroup
-                # workergroup will be used to manage the workers, rename?
-                # workergroup might give functionality, ie implement task queues and stuff
-                print 'Lauching job %s.' % d
-                job.start()
-                group.add(job)
-                
-
-    # launch threads
-    if group:
-        print 'Waiting for processing to complete.'
-        group.wait_all()
-    else:
-        print 'No models found. Trying again later.'
-
-
+            tasks = [ SimpleTask( task, params=params ) for task in tasks_functions ]
+            for task in tasks:
+                if task.ready():
+                    group.add_task_to_queue( task )
+    group.start_working()              
+    group.wait_all()
+    print 'All Finished!'
 if __name__ == "__main__":
     main()
