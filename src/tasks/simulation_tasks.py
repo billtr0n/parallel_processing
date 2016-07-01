@@ -4,7 +4,7 @@ import subprocess
 """
 Define tasks here. 
 """
-def process_gmpe( params = None ):
+def process_gmpe( params ):
     if self.__prepare_parameters( self.params['cwd'] ):
         if calc_gmpe( params = params ):
             try:
@@ -13,7 +13,7 @@ def process_gmpe( params = None ):
                 print 'could not plot gmpe because %s' % e
                 raise
 
-def plot_gmpe( params = None ):
+def plot_gmpe( params ):
     # hard code frequencies, eventhough i shouldn't
     # make more arbitrary to look at more periods when fortran code is implemented
 
@@ -35,7 +35,7 @@ def plot_gmpe( params = None ):
             raise
 
 
-def calc_gmpe( params = None ):
+def calc_gmpe( params ):
     try:
         print 'Computing NGA West2 GMPE relationships.'
         os.chdir( params['cwd'] )
@@ -50,14 +50,10 @@ def calc_gmpe( params = None ):
         return False
     return
 
-        
-
-"""
-Private helping functions below.
-"""
 def plot_gmpe_group_bias( params ):
-    from numpy import log, loadtxt, array, where
+    from numpy import log, loadtxt, array, where, median, percentile
     from matplotlib.figure import Figure
+    from matplotlib.patches import Rectangle
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
 
     freqs = [0.25, 0.5, 1.0, 2.0, 3.0, 5.0]
@@ -104,13 +100,20 @@ def plot_gmpe_group_bias( params ):
 
                 # plot bias and error bars
                 b = array(bias[key])
-                avgb = b.mean(axis=0)
+                avgb = median(b, axis=0)
                 minb = b.min(axis=0)
                 maxb = b.max(axis=0)
+                q25s, q75s = percentile(b, [25,75], axis=0)
                 ylower = avgb - minb
                 yupper = maxb - avgb
                 ax.errorbar(data[:,0], avgb, yerr=[ylower,yupper], fmt='o', ecolor='g', capthick=2)
-                fig.savefig( os.path.join(params['root_dir'], 'dist_bias_%shz.pdf' % key ) )
+                for dis, avg, q25, q75 in zip(data[:,0], avgb, q25s, q75s):
+                    wid = 0.7
+                    hei = q75 - q25
+                    xloc = dis - wid / 2
+                    yloc = q25
+                    ax.add_patch( Rectangle( (xloc, yloc), wid, hei, fill=False, color='blue') ) 
+                fig.savefig( os.path.join(params['root_dir'], 'dist_bias_%shz.pdf' % key ), bbox_inches='tight' )
 
             if key in distances:
                 fig = Figure()
@@ -126,15 +129,189 @@ def plot_gmpe_group_bias( params ):
                 b = b.reshape([b.size/len(freqs),len(freqs)])
                 
                 # plot bias and error bars
-                avgb = b.mean(axis=0)
+                avgb = median(b, axis=0)
                 minb = b.min(axis=0)
                 maxb = b.max(axis=0)
+                q25s, q75s = percentile(b, [25,75], axis=0)
                 ylower = avgb - minb
                 yupper = maxb - avgb
                 ax.errorbar(1./array(freqs), avgb, yerr=[ylower,yupper], fmt='o', ecolor='g', capthick=2)
+                for dis, avg, q25, q75 in zip(1./array(freqs), avgb, q25s, q75s):
+                    wid = 0.08
+                    hei = q75 - q25
+                    xloc = dis - wid / 2
+                    yloc = q25
+                    ax.add_patch( Rectangle( (xloc, yloc), wid, hei, fill=False, color='blue') )
                 fig.savefig(os.path.join(params['root_dir'], 'dist_freq_%skm.pdf' % key) )
+                ax.set_xlim([0, 5.0])
     except Exception as e:
         print 'exception: %s' % str(e)
+
+
+def plot_kinematic_fields( params ):
+    try:
+        import os
+        import pylab as np 
+        import numpy.matlib as ml
+        import scipy.stats.mstats as mstats
+        import matplotlib
+        import matplotlib.pyplot as plt
+        from matplotlib import cm
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
+        # Define a class that forces representation of float to look a certain way
+        # This remove trailing zero so '1.0' becomes '1'
+        class nf(float):
+            def __repr__(self):
+                str = '%.1f' % (self.__float__(),)
+                if str[-1] == '0':
+                    return '%.0f' % self.__float__()
+                else:
+                    return '%.1f' % self.__float__()
+        matplotlib.rcParams['xtick.direction'] = 'out'
+        matplotlib.rcParams['ytick.direction'] = 'out'
+        # Recast levels to new class
+            
+        nx = 2601
+        nz = 801 
+        dx = 25.
+        ex = nx*dx*1e-3
+        ez = nz*dx*1e-3
+        xo = 1201 
+        zo = 401
+
+        model = os.path.join(params['cwd'], './out/')
+
+        # compute total slip
+        slip1 = np.fromfile(model + 'su1', dtype=np.float32).reshape([nz,nx])
+        slip2 = np.fromfile(model + 'su2', dtype=np.float32).reshape([nz,nx])
+        trup = np.fromfile(model + 'trup', dtype=np.float32).reshape([nz,nx])
+        psv = np.fromfile(model + 'psv', dtype=np.float32).reshape([nz,nx])
+        slip = np.sqrt(slip1**2+slip2**2)
+        # name = model.split('/')[-1] # grab name as last token
+
+        # plot slip
+        x = np.arange(0,ex,dx*1e-3)
+        fig = Figure()
+        canvas = FigureCanvas(fig)
+        ax = fig.gca()
+        palette = plt.cm.jet
+        # print 'mean slip: ', np.mean(slip[np.where(psv > 0.01)])
+        # print 'max slip: ', slip.max()
+        # print 'min slip: ', slip.min()
+        # plot contours of rupture time 
+        # xx = 0.001 * np.fromfile(model + '/x1o', dtype=np.float32).reshape([nz,nx])
+        # zz = 0.001 * np.fromfile(model + '/x2o', dtype=np.float32).reshape([nz,nx])
+        x = np.arange(0,ex,dx*1e-3)
+        z = np.arange(0,ez,dx*1e-3)
+        xx, zz = np.meshgrid(x,z)
+        v = 0.75 * np.arange(-20,20)
+        im = ax.imshow(slip, extent=(0, ex, 0, ez), origin='normal',cmap=palette)
+        ctrup = ax.contour(xx,zz,trup,v,extent=(0, ex, 0, ez), colors='gray', linewidths=0.25, antialiased=False)
+        ctrup.levels = [nf(val) for val in ctrup.levels]
+        fmt = '%r'
+        # plt.clabel(ctrup, ctrup.levels, inline=True, fmt=fmt, fontsize=10)
+        # ax.scatter(1201*dx*1e-3,401*dx*1e-3, marker='*', s=250, color='k')
+        # create an axes on the right side of ax. The width of cax will be 5%
+        # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+        
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar = np.colorbar(im, cax=cax)
+        cbar.solids.set_rasterized(True)
+        cbar.solids.set_edgecolor("face")
+        cbar.set_label(label='Slip (m)', size=14)
+        ax.set_ylim([20,0])
+        ax.set_xlim([0,65])
+        ax.set_xlabel('Distance (km)', fontsize=14)
+        ax.set_ylabel('Distance (km)', fontsize=14)
+        im.set_clim([0,slip.max()])
+
+        # divider = make_axes_locatable(ax)
+        tax = divider.append_axes("top", size="25%", pad=0.05)
+        tax.plot(x, slip1[0,:], 'k')
+        tax.set_yticks([0, slip[0,:].max()])
+        tax.tick_params(
+                axis = 'x',
+                which = 'both',
+                bottom = 'off',
+                right = 'off',
+                labelbottom = 'off',
+                )
+        ticks = tax.yaxis.get_majorticklabels()
+        ticks[0].set_verticalalignment('bottom')
+        ticks = ax.yaxis.get_majorticklabels()
+        ticks[0].set_verticalalignment('top')
+        ax.tick_params(axis='x', top = 'off', labeltop = 'off')
+        fig.savefig(os.path.join(params['cwd'], 'slip_rcont.pdf'))
+
+        # plot psv
+        fig = Figure()
+        canvas = FigureCanvas(fig)
+        ax = fig.add_subplot(111)
+        # create an axes on the right side of ax. The width of cax will be 5%
+        # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+        im = ax.imshow(psv, extent=(0, ex, 0, ez), origin='normal', cmap='jet')
+
+        # plt.scatter(1201*dx*1e-3,401*dx*1e-3, marker='*', s=150, color='k')
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar = np.colorbar(im, cax=cax)
+        cbar.solids.set_rasterized(True)
+        cbar.solids.set_edgecolor("face")
+        cbar.set_label(label=r'$V^{peak}$ (m/s)', size=14)
+        ax.set_xlim([0,65])
+        ax.set_ylim([20,0])
+        ax.set_xlabel('Distance (km)', fontsize=14)
+        ax.set_ylabel('Distance (km)', fontsize=14)
+        im.set_clim([0,psv.max()])
+        fig.savefig(os.path.join(params['cwd'], 'psv.pdf'))
+
+        # plot vrup 
+        # TODO: remove hard-coded velocity model
+        material = np.loadtxt( os.path.join(params['cwd'], 'bbp1d_1250_dx_25.asc') )
+        vs = material[:,2]
+        cs = ml.repmat(vs[:-1],nx,1).T * 1e3
+        trup_ma = np.ma.masked_values(trup,1e9)
+        gy, gx = np.absolute(np.gradient(trup_ma))
+        ttime = np.sqrt(gy**2 + gx**2)
+        vrup = dx / ttime
+        fig = plt.figure()
+        ax = fig.gca()
+        im = ax.imshow(vrup/cs, extent=(0, ex, 0, ez), origin='normal', cmap='viridis')
+        
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.05)
+        cbar = np.colorbar(im, cax=cax)
+        cbar.solids.set_rasterized(True)
+        cbar.set_label(label=r'$V_{rup}/c_s$', size=14)
+        cbar.solids.set_edgecolor("face")
+        ax.set_xlim([0,65])
+        ax.set_ylim([20,0])
+        im.set_clim([0.5,1.0])
+        ax.set_xlabel('Distance (km)', fontsize=14)
+        ax.set_ylabel('Distance (km)', fontsize=14)
+        fig.savefig(os.path.join(params['cwd'], 'vrup.pdf'))
+    except Exception as e:
+        print 'unable to plot source fields due to error %s' % str(e)
+
+
+
+def compute_one_point_statistics( params ):
+    # these one point statistics are going to be for each simulation.
+    # take 20000 point sample where not in nucleation zone, or ruptures are supershear
+    pass
+
+def prepare_model_csv_files( params ):
+    from pandas import DataFrame
+    # prepare csv files used for spatial analysis in R
+    pass
+    
+
+"""
+Private helping functions below.
+"""
 
 # potential refactoring into utils.py
 # even break that up into different submodules
@@ -215,6 +392,7 @@ def __plot_gmpe_individual( name ):
             shutil.copy( os.path.join(self.params['script_dir'], 'BSSA_2014_nga.m'), cwd )
             shutil.copy( os.path.join(self.params['script_dir'], 'CB_2014_nga.m'), cwd )
             shutil.copy( os.path.join(self.params['script_dir'], 'CY_2014_nga.m'), cwd )
+            shutil.copy( os.path.join(self.params['script_dir'], 'bbp1d_1250_dx_25.asc'), cwd )
         except IOError:
             print 'unable to copy necessary files.'
             return False
@@ -261,6 +439,3 @@ def __plot_gmpe_individual( name ):
             raise ValueError
         return { 'strtx' : strtx, 'nflt' : nflt }
 
-def test_task( params ):
-    print 'testing.'
-    return

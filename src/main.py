@@ -3,7 +3,7 @@ import subprocess
 
 from workers import SimpleTask
 from managers import SimpleTaskWorkerManager  
-from tasks import plot_gmpe, plot_gmpe_group_bias
+from tasks.simulation_tasks import plot_gmpe, plot_gmpe_group_bias, plot_kinematic_fields
 
 # TODO: implement some type of logging information
 # TODO: implement other tasks.
@@ -18,7 +18,7 @@ def main():
              'root_dir'    : '/media/sf_Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
              'script_dir'  : '/media/sf_Dropbox/Current/processing/utils',
              'script_name' : 'gmpe_calc.m',
-             'home_dir'    : home_dir,
+             'home_dir'    :  home_dir,
              }
 
     # params = {
@@ -33,15 +33,17 @@ def main():
 
     """ define tasks that are applied to each simulation """
     individual_tasks = [
-                        plot_gmpe,
-                        #calc_gmpe,
+                        # plot_gmpe,
+                        # calc_gmpe,
+                        # one_point_statistics,
+                        # plot_kinematic_fields,
                        ]
 
     """ apply tasks to group """
     if individual_tasks:
         _queue_individual_tasks( group, individual_tasks, params )
 
-    """ add task that only gets applied once """
+    """ define and apply tasks that are applied to all simulations """
     group.add_task_to_queue( SimpleTask( plot_gmpe_group_bias, params=params ) )
     group.start_working()              
     group.wait_all()

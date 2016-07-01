@@ -1,30 +1,3 @@
-class WorkGroup( object ):
-    """
-    this will use a Pool queue to keep track of all the total tasks and assign a fixed amount of
-    workers to finish all of the tasks.
-    """
-    def __init__(self):
-        self.Queue = []
-
-    def __iter__(self):
-        for job in self.jobs:
-            yield job
-
-    def __nonzero__(self):
-        if self.jobs: 
-            return True
-        return False
-
-    def add( self, job ):
-        self.jobs.append( job )
-
-    def run_wait_all( self ):
-        for p in self.jobs: p.start()
-        for p in self.jobs: p.join()
-
-    def wait_all( self ):
-        for p in self.jobs: p.join()
-
 """
 Time-Series Class
 Class to store n-dimensional time series and store meta-data about them.
