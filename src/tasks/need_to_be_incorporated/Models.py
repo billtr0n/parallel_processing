@@ -66,7 +66,7 @@ SeismogramFigure Class
 Wrapper to matplotlib class, which provides functionality for plotting seismograms.
 
 """
-from matplotlib.pyplot import Figure
+from matplotlib.figure import Figure
 class SeismogramFigure( Figure ):
     
     def __init__(self, kind='default',  *args,**kwargs):

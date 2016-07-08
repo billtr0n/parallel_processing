@@ -563,12 +563,11 @@ def compute_spectral_acceleration(accx, accy, dtt, T, c=0.05, NintMax=10):
             uy = np.zeros((Ntot,len(T)),dtype='c8')
     
         # Form propagator C*E*R and Integrate the ODE
-        # the bug is somewhere in here. undefined behavior at work... bad!
         for j in range(Ntot):
             Unew[0,:]=R[0,0]*(aEx[j]*Eint11+Uold[0,:]*E11)+R[0,1]*Uold[1,:]*E11
             Unew[1,:]=R[1,0]*(aEx[j]*Eint22+Uold[0,:]*E22)+R[1,1]*Uold[1,:]*E22
             Unew=np.array(np.matrix(C)*np.matrix(Unew))
-            Uold=np.copy(Unew) # this statement
+            Uold=np.copy(Unew)
             if (component == 0):
                 ux[j,:]=Unew[1,:]
             else:
@@ -581,7 +580,7 @@ def compute_spectral_acceleration(accx, accy, dtt, T, c=0.05, NintMax=10):
         osc1 = cth*ux+sth*uy
         osc2 = -sth*ux+cth*uy
         GeoMax[j,:]=np.sqrt(np.amax(np.absolute(osc2),axis=0)*np.amax(np.absolute(osc1),axis=0))
-    # this needs modified to get other angles.
+    # this can be needs modified to get other angles.
     Sa = om0*np.median(GeoMax, axis=0)
     return Sa
 
@@ -680,3 +679,98 @@ def get_backends():
     backends = [backend_fname_formatter(fname) for fname in backend_fnames]
 
     print backends
+
+
+def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clabel=None, xlabel=None, ylabel=None, surface_plot=False, contour=False ):
+        """Plots 2d array with modified colorbar and extra options.
+
+        Args:
+            input (ndarray)      : (list) 2d array to be plotted, (dict) if contour is True dict will contain 
+                                   the 2d array that will be used for contouring under the key 'contour'
+            nx (int)             : number of nodes in x direction
+            nz (int)             : number of nodes in z direction
+            dx (float)           : grid spacing
+            label (str)           : units of array, e.g. if array contains velocities units would be 'Velocity (m/s)'
+            surface_plot (bool)  : plot axis above 2d image plot showing the surface trace of array
+            contour (bool)       : add contour to 2d image, if input is dict plot input['contour'] as the contour
+                                   else plot the contour of input
+        """
+
+
+    from matplotlib.figure import Figure
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+    fig = Figure()
+    canvas = FigureCanvas(fig)
+
+    # fast x convention
+    if not nx:
+        nx = input.shape[1]
+    if not nz:
+        nz = input.shape[0]
+
+    ex = nx * dx
+    ez = nz * dz
+    im = ax.imshow(input, extent=(0, ex, 0, ez), origin='normal',cmap=palette)
+
+    if contour:
+        x = np.arange(0,ex,dx*1e-3)
+        z = np.arange(0,ez,dx*1e-3)
+        xx, zz = np.meshgrid(x,z)
+        v = 0.75 * np.arange(-20,20)
+    if isinstance(input, np.ndarray):
+        ctrup = ax.contour( xx, zz, input, v, 
+                            extent=(0, ex, 0, ez), colors='gray', 
+                            linewidths=0.25, antialiased=False )
+    else:
+        ctrup = ax.contour( xx, zz, input['contour'], v, 
+                            extent=(0, ex, 0, ez), colors='gray', 
+                            linewidths=0.25, antialiased=False )
+
+        # ignore contour part, we're done with it
+        input = input['data']
+
+    # create an axes on the right side of ax. The width of cax will be 5%
+    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+    divider = make_axes_locatable(ax)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    cbar = np.colorbar(im, cax=cax)
+    cbar.solids.set_rasterized(True)
+    cbar.solids.set_edgecolor("face")
+    cbar.set_label(label=clabel, size=14)
+    ax.set_ylim([ez,0])
+    ax.set_xlim([0,ex])
+    ax.set_xlabel(xlabel, fontsize=14)
+    ax.set_ylabel(ylabel, fontsize=14)
+    im.set_clim([0,input.max()])
+
+    if surface_plot:
+        tax = divider.append_axes("top", size="25%", pad=0.05)
+        tax.plot(x, slip1[0,:], 'k')
+        tax.set_yticks([0, slip[0,:].max()])
+        tax.tick_params(
+                axis = 'x',
+                which = 'both',
+                bottom = 'off',
+                right = 'off',
+                labelbottom = 'off',
+                )
+        ticks = tax.yaxis.get_majorticklabels()
+        ticks[0].set_verticalalignment('bottom')
+        ticks = ax.yaxis.get_majorticklabels()
+        ticks[0].set_verticalalignment('top')
+        ax.tick_params(axis='x', top = 'off', labeltop = 'off')
+
+    fig.savefig( os.path.join(params['cwd'], filename) )
+    return
+
+def compute_rupture_velocity(trup, dx, cs=vs):
+    material = np.loadtxt( os.path.join(params['cwd'], 'bbp1d_1250_dx_25.asc') )
+    if isinstance(vs, np.ndarray):
+        cs = ml.repmat(vs[:-1],nx,1).T * 1e3
+    trup_ma = np.ma.masked_values( trup, 1e9 )
+    gy, gx = np.absolute( np.gradient( trup_ma ) )
+    ttime = np.sqrt( gy**2 + gx**2 )
+    vrup = dx / ttime
+    return vrup

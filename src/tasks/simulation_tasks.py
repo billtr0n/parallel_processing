@@ -1,9 +1,12 @@
 import os
 import subprocess
+import logging
 
 """
 Define tasks here. 
 """
+
+
 def process_gmpe( params ):
     if self.__prepare_parameters( self.params['cwd'] ):
         if calc_gmpe( params = params ):
@@ -122,7 +125,7 @@ def plot_gmpe_group_bias( params ):
                 ax.set_title('log(sim/gmpe) vs. period @ %s km' % key )
                 ax.set_xlabel('Period (s)')
                 ax.set_ylabel('log(sim/gmpe)')
-
+                
                 # plot horizontal line at 0
                 ax.axhline(y=0, color='black')
                 b = array(bias[key])
@@ -273,9 +276,9 @@ def plot_kinematic_fields( params ):
         material = np.loadtxt( os.path.join(params['cwd'], 'bbp1d_1250_dx_25.asc') )
         vs = material[:,2]
         cs = ml.repmat(vs[:-1],nx,1).T * 1e3
-        trup_ma = np.ma.masked_values(trup,1e9)
-        gy, gx = np.absolute(np.gradient(trup_ma))
-        ttime = np.sqrt(gy**2 + gx**2)
+        trup_ma = np.ma.masked_values( trup, 1e9 )
+        gy, gx = np.absolute( np.gradient( trup_ma ) )
+        ttime = np.sqrt( gy**2 + gx**2 )
         vrup = dx / ttime
         fig = plt.figure()
         ax = fig.gca()
