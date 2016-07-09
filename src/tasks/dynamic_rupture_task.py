@@ -36,6 +36,7 @@ def process_dynamic_rupture_simulation( params ):
         nz = params['nz']
         dx = params['dx']
         cwd = params['cwd'] 
+        ihypo = params['ihypo']
         outdir = os.path.join(cwd, 'out')
         figdir = os.path.join(cwd, 'figs')
         if not os.path.exists( figdir ):
@@ -106,11 +107,35 @@ def process_dynamic_rupture_simulation( params ):
                     surface_plot=False, contour=False )
 
 
-    """ calculate one-point statistics """
-    # mask unwanted values 1) inside hypocenter, 2) inside velocity-strengthening 3) where super-shear 
-    # and within rupturing area on the fault
+    """ calculate one-point statistics 
+    mask unwanted values 1) inside hypocenter, 2) inside velocity-strengthening 3) where super-shear 
+    and within rupturing area on the fault
+    compute slip.mean(), slip.std(), psv.mean(), psv.std(), vrup.mean(), vrup.std()
+    """
+    output_data = {}
+    include = ['sum', 'vrup', 'psv', 'mu0', 'x', 'z']
+    for key in data:
+        if key not in include:
+            output_data[key] = data[key].raveled()
 
-    # compute slip.mean(), slip.std(), psv.mean(), psv.std(), vrup.mean(), vrup.std()
+    # ignore bloated data
+    data = pd.DataFrame( data = output_data )
+
+    
+    rcrit = 4000
+    data_trimmed = pd.concat([
+                # remove square region around hypocenter ~ size of rcrit
+                data[ (data['x'] < ihypo[0]-rcrit) | (data['x'] > ihypo[0]+rcrit) ], 
+                data[ ( (data['x'] > ihypo[0]-rcrit) & (data['x'] < ihypo[0]+rcrit) ) & 
+                        ((data['z'] < ihypo[1]-rcrit) | (data['z'] > ihypo[1]+rcrit) )], 
+                # remove velocity strengthening, this will be analyzed and implemented later
+                data[ data['z'] > 4000 ],
+                # remove super-shear
+                data[ data['vrup'] > 1.0],
+                # remove fault rupture bounds
+                data[ data['']]
+    ])
+
 
 
     """ write out csv files """

@@ -773,4 +773,4 @@ def compute_rupture_velocity(trup, dx, cs=vs):
     gy, gx = np.absolute( np.gradient( trup_ma ) )
     ttime = np.sqrt( gy**2 + gx**2 )
     vrup = dx / ttime
-    return vrup
+    return vrup / cs
