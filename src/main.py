@@ -51,7 +51,7 @@ def main():
 
     """ define and apply tasks that are applied to all simulations """
     group.add_task_to_queue( SimpleTask( plot_gmpe_group_bias, params=params ) )
-    group.start_working()            
+    group.start_working()
     group.wait_all()
 
     print 'All Finished!'

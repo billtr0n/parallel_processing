@@ -774,3 +774,6 @@ def compute_rupture_velocity(trup, dx, cs=vs):
     ttime = np.sqrt( gy**2 + gx**2 )
     vrup = dx / ttime
     return vrup / cs
+
+
+def convert_parameters_to_dict(  )

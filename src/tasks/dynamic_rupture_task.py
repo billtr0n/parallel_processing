@@ -42,7 +42,7 @@ def process_dynamic_rupture_simulation( params ):
         if not os.path.exists( figdir ):
             os.makedir( figdir )
     except KeyError:
-        logging.error('missing params. aborting.')
+        logging.error('missing required params. aborting.')
         return False
 
     # set file names
@@ -76,7 +76,7 @@ def process_dynamic_rupture_simulation( params ):
     }
     data['vrup'] = utils.compute_rupture_velocity( trup, dx, cs=vs )
     data['sum']  = np.sqrt( su1**2 + su2**2 )
-    data['mu0'] = tsm / np.absolute(tnm)
+    data['mu0']  = tsm / np.absolute(tnm)
 
     clabel = {
         'su1' : r'$u_x$ (m)',
@@ -108,35 +108,64 @@ def process_dynamic_rupture_simulation( params ):
 
 
     """ calculate one-point statistics 
-    mask unwanted values 1) inside hypocenter, 2) inside velocity-strengthening 3) where super-shear 
-    and within rupturing area on the fault
-    compute slip.mean(), slip.std(), psv.mean(), psv.std(), vrup.mean(), vrup.std()
+    mask unwanted values 
+        1) inside hypocenter 
+        2) inside velocity-strengthening 
+        3) where super-shear 
+        4) within rupturing area on the fault
+
+    compute slip.mean(), slip.std(), psv.mean(), psv.std(), vrup.mean(), vrup.std(), commit to data structure
     """
-    output_data = {}
+    simulation_data = {} """ <<----- Add more into this, this will be the data structure holding everything about the model. 
+                                     for instance, parameters from json file need to be stored in here as well. """
     include = ['sum', 'vrup', 'psv', 'mu0', 'x', 'z']
     for key in data:
         if key not in include:
-            output_data[key] = data[key].raveled()
+            data[key] = data[key].raveled()
 
-    # ignore bloated data
-    data = pd.DataFrame( data = output_data )
-
+    # write old data
+    data = pd.DataFrame( data = data )
     
     rcrit = 4000
     data_trimmed = pd.concat([
                 # remove square region around hypocenter ~ size of rcrit
                 data[ (data['x'] < ihypo[0]-rcrit) | (data['x'] > ihypo[0]+rcrit) ], 
-                data[ ( (data['x'] > ihypo[0]-rcrit) & (data['x'] < ihypo[0]+rcrit) ) & 
-                        ((data['z'] < ihypo[1]-rcrit) | (data['z'] > ihypo[1]+rcrit) )], 
+                data[ ((data['x'] > ihypo[0]-rcrit) & (data['x'] < ihypo[0]+rcrit) ) & 
+                        ((data['z'] < ihypo[1]-rcrit) | (data['z'] > ihypo[1]+rcrit)) ], 
                 # remove velocity strengthening, this will be analyzed and implemented later
                 data[ data['z'] > 4000 ],
                 # remove super-shear
-                data[ data['vrup'] > 1.0],
-                # remove fault rupture bounds
-                data[ data['']]
-    ])
+                data[ data['vrup'] < 1.0],
+                # remove areas that did not rupture
+                data[ (data['slip'] > 0.1) & (data['slip'] < 1e9)],
+    ]).reset_index().drop_duplicates(subset='index').set_index('index')
+
+    # take 20% sample of the data
+    data_sample = data_trimmed.sample( frac=0.2 )
+
+    # store one-point statistics
+    simulation_data['one_point'] = {
+                                    # same sampled version
+                                    'avg_slip_tr': data_trimmed['sum'].mean(),
+                                    'avg_psv_tr':  data_trimmed['psv'].mean(),
+                                    'avg_vrup_tr': data_trimmed['vrup'].mean(),
+                                    'std_slip_tr': data_trimmed['sum'].std(),
+                                    'std_psv_tr': data_trimmed['psv'].std(),
+                                    'std_vrup_tr': data_trimmed['vrup'].std(),
+
+                                    # save sampled version
+                                    'avg_slip_sa': data_sample['sum'].mean(),
+                                    'avg_psv_sa':  data_sample['psv'].mean(),
+                                    'avg_vrup_sa': data_sample['vrup'].mean(),
+                                    'std_slip_sa': data_sample'sum'].std(),
+                                    'std_psv_sa': data_sample['psv'].std(),
+                                    'std_vrup_sa': data_sample['vrup'].std(),
+                                    }
 
 
+    # compute histograms 
+    fig, ax = 
+    data_sample.hist( bins = np.sqrt(len(data_sample.index)), normed = 1, ax = ax )
 
     """ write out csv files """
     # write out randomly sampled data points for spatial analysis in R
