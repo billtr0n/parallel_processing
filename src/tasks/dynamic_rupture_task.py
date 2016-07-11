@@ -27,25 +27,35 @@ def process_dynamic_rupture_simulation( params ):
 
     import utils
 
-    
+    simulation = {}
     logging.info('beginning work on %s' % outdir)
-    # check for required parameters
-    # maybe make this subclass SimpleTask and do that in "ready" method
     try:
-        nx = params['nx']
-        nz = params['nz']
-        dx = params['dx']
-        cwd = params['cwd'] 
-        ihypo = params['ihypo']
+        spars = parse_simulation_details( params['cwd'], write=False )
+        simulation.update(spars)
+    except:
+        print 'unable to parse meta.py file. skipping simulation.'
+        return False
+
+    try:
+        nn = simulation['parameters']['nn']
+        ihypo = simulation['parameters']['ihypo']
+        cwd = params['cwd']
+        nx = nn[0]
+        nz = nn[1]
         outdir = os.path.join(cwd, 'out')
         figdir = os.path.join(cwd, 'figs')
+        datadir = os.path.join(cwd, 'data')
         if not os.path.exists( figdir ):
             os.makedir( figdir )
+        if not os.path.exists( datadir ):
+            os.makedir( datadir )
     except KeyError:
         logging.error('missing required params. aborting.')
         return False
 
-    # set file names
+    # this should be more general to plot any/all of the fields output
+    # interface with fieldnames.py to write little blurb about each fig
+    # for now, these can be hard coded.
     files = {
         'su1'  : os.path.join( outdir, 'su1' ),
         'su2'  : os.path.join( outdir, 'su2' ),
@@ -98,11 +108,11 @@ def process_dynamic_rupture_simulation( params ):
                         'data'    : data[field], 
                         'contour' : data['trup'],
                       }
-                utils.plot_2d_image( inp, filename=os.path.join(figdir, field + '.pdf'),
+                utils.plot_2d_image( inp, filename=os.path.join(figdir, field + '.png'),
                     nx=nx, nz=nz, dx=dx, clabel=clabel[field], xlabel='Distance (km)', ylabel='Depth (km)', 
                     surface_plot=True, contour=True )
             else:
-                utils.plot_2d_image( inp, filename=os.path.join(figdir, field + '.pdf'),
+                utils.plot_2d_image( inp, filename=os.path.join(figdir, field + '.png'),
                     nx=nx, nz=nz, dx=dx, clabel=clabel[field], xlabel='Distance (km)', ylabel='Depth (km)', 
                     surface_plot=False, contour=False )
 
@@ -116,8 +126,7 @@ def process_dynamic_rupture_simulation( params ):
 
     compute slip.mean(), slip.std(), psv.mean(), psv.std(), vrup.mean(), vrup.std(), commit to data structure
     """
-    simulation_data = {} """ <<----- Add more into this, this will be the data structure holding everything about the model. 
-                                     for instance, parameters from json file need to be stored in here as well. """
+    
     include = ['sum', 'vrup', 'psv', 'mu0', 'x', 'z']
     for key in data:
         if key not in include:
@@ -144,7 +153,7 @@ def process_dynamic_rupture_simulation( params ):
     data_sample = data_trimmed.sample( frac=0.2 )
 
     # store one-point statistics
-    simulation_data['one_point'] = {
+    simulation['one_point'] = {
                                     # same sampled version
                                     'avg_slip_tr': data_trimmed['sum'].mean(),
                                     'avg_psv_tr':  data_trimmed['psv'].mean(),
@@ -157,24 +166,31 @@ def process_dynamic_rupture_simulation( params ):
                                     'avg_slip_sa': data_sample['sum'].mean(),
                                     'avg_psv_sa':  data_sample['psv'].mean(),
                                     'avg_vrup_sa': data_sample['vrup'].mean(),
-                                    'std_slip_sa': data_sample'sum'].std(),
+                                    'std_slip_sa': data_sample['sum'].std(),
                                     'std_psv_sa': data_sample['psv'].std(),
                                     'std_vrup_sa': data_sample['vrup'].std(),
                                     }
 
 
     # compute histograms 
-    fig, ax = 
-    data_sample.hist( bins = np.sqrt(len(data_sample.index)), normed = 1, ax = ax )
+    ax = data_sample.hist( 
+            bins = np.sqrt(len(data_sample.index)), 
+            normed = 1, 
+            columns = ['mu0','sum','psv','vrup'], 
+            color='k', 
+            alpha=0.5
+    )
+    fig = _get_figure( ax )
+    fig.savefig( os.path.join( figdir, 'hist.png' ), dpi=300 )
 
     """ write out csv files """
-    # write out randomly sampled data points for spatial analysis in R
-
+    data_trimmed.to_csv( os.path.join(datadir, 'data_trimmed.csv') )
+    data_sampled.to_csv( os.path.join(datadir, 'data_sampled.csv') )
+    one_point = pd.DataFrame( simulation_data['one_point'] ).to_csv( os.path.join(datadir, 'one_point.csv') )
 
 
     """ generate markdown file """
     
 
-
-
-
+def _get_figure( ax ):
+    return ax[0,0].get_figure()

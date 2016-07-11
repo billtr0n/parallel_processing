@@ -26,6 +26,7 @@ class SimpleTaskWorkerManager( object ): # os.cpu_count() also for default?
         try:
             if task.ready:
                 self.tasks.put( task )
+                logging.info('adding task %s to queue' % str(task))
                 self.total_tasks += 1
             else:
                 logging.warning('unable to add task to queue. task could not be made ready') 

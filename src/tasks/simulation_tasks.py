@@ -61,7 +61,6 @@ def plot_gmpe_group_bias( params ):
 
     freqs = [0.25, 0.5, 1.0, 2.0, 3.0, 5.0]
     distances = [9.5, 14.5, 19.5, 24.5, 29.5]
-
     
     try:
         # create data structure to hold bias results

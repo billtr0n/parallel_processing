@@ -10,4 +10,5 @@ notes
 # Pycharm
 *.iml
 .idea/
-
+*.png
+*.pdf

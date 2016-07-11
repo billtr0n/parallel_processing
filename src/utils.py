@@ -681,7 +681,7 @@ def get_backends():
     print backends
 
 
-def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clabel=None, xlabel=None, ylabel=None, surface_plot=False, contour=False ):
+def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clabel=None, xlabel=None, ylabel=None, surface_plot=False, contour=False, **kwargs ):
         """Plots 2d array with modified colorbar and extra options.
 
         Args:
@@ -762,7 +762,7 @@ def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clab
         ticks[0].set_verticalalignment('top')
         ax.tick_params(axis='x', top = 'off', labeltop = 'off')
 
-    fig.savefig( os.path.join(params['cwd'], filename) )
+    fig.savefig( os.path.join(params['cwd'], filename), dpi=300 )
     return
 
 def compute_rupture_velocity(trup, dx, cs=vs):
@@ -776,4 +776,65 @@ def compute_rupture_velocity(trup, dx, cs=vs):
     return vrup / cs
 
 
-def convert_parameters_to_dict(  )
+def parse_simulation_details( cwd, write = False ):
+    import os
+    # read meta.py file
+    exec( open( os.path.join(cwd, 'meta.py')).read() )
+
+    # get list of local variables
+    lvars = locals()
+    
+    # data structure for simulation.
+    data = {}
+    data['parameters'] = {}
+
+    exclude = ['json', 'lvars', 'shape', 'xi', 'indices']
+    for var, val in lvars.items():
+        # exclude builtin types and json import
+        if not var.startswith('__') and var not in exclude:
+            if var == 'fieldio':
+                ins, outs = _parse_fieldio(val, eval('shape'), eval('indices'))
+                data['inputs'] = ins
+                data['outputs'] = outs
+            else:
+                data['parameters'][var] = eval(var)
+
+    
+    # write json file containing simulation data
+    if write:
+        import json
+        with open('test2.js', 'w') as fh:
+            json.dump(data, fh, indent=2)
+
+"""turns meta.py file into json object using eval, this might be very risky, but I trust myself"""
+def _parse_fieldio(fieldio, shape, indices):
+    inputs = []
+    outputs = []
+    for field in fieldio:
+
+        # inputs
+        field_vals = field[-3:]
+        if field[0] == '=w':
+            inputs.append( {
+                'file': field_vals[0],
+                'field': field_vals[2][0],
+                'shape': shape[str(field_vals[0])],
+                'indices': indices[str(field_vals[0])],
+                } )
+
+        # outputs
+        if field[0] == '=R':
+            if field_vals[0] == '-':
+                outputs.append( { 
+                    'file': '',
+                    'field': field_vals[2][0],
+                    'val': field_vals[1],
+                 } )
+            else:
+                outputs.append( {
+                    'file': field_vals[0],
+                    'field': field_vals[2][0],
+                    'val': ''
+                    } )
+        
+    return inputs, outputs
