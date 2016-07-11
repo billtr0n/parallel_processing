@@ -27,15 +27,14 @@ def process_dynamic_rupture_simulation( params ):
 
     import utils
 
-    simulation = {}
-    logging.info('beginning work on %s' % outdir)
+    # parse simulation details into dict
     try:
-        spars = parse_simulation_details( params['cwd'], write=False )
-        simulation.update(spars)
+        simulation = utils.parse_simulation_details( params['cwd'], write=False )
     except:
-        print 'unable to parse meta.py file. skipping simulation.'
+        logging.error('unable to parse meta.py file. skipping simulation.')
         return False
 
+    # get necessary params for evaluation
     try:
         nn = simulation['parameters']['nn']
         ihypo = simulation['parameters']['ihypo']
@@ -56,6 +55,7 @@ def process_dynamic_rupture_simulation( params ):
     # this should be more general to plot any/all of the fields output
     # interface with fieldnames.py to write little blurb about each fig
     # for now, these can be hard coded.
+    logging.info('beginning work on %s' % outdir)
     files = {
         'su1'  : os.path.join( outdir, 'su1' ),
         'su2'  : os.path.join( outdir, 'su2' ),
@@ -67,6 +67,8 @@ def process_dynamic_rupture_simulation( params ):
     logging.info( 'working with files: %s' % ', '.join( files.keys() ) )
 
     # load files into dict
+    # TODO: change this functionality to accept any field in simulation['fieldio']['inputs']
+    # TODO: Make simulation a class. right now i didn't, bc it just stores data no functionality needed
     ex = dx * nx
     ez = dx * nz
     x = np.arange( 0,ex,dx )
@@ -75,17 +77,17 @@ def process_dynamic_rupture_simulation( params ):
     material = np.loadtxt( os.path.join(params['cwd'], 'bbp1d_1250_dx_25.asc') )
     vs = material[:,3]
     data = {
-        'x'    : xx
-        'z'    : zz
-        'su1'  : np.fromfile( files['su1'], dtype='np.float32' ).reshape([ nz, nx ])
-        'su2'  : np.fromfile( files['su2'], dtype='np.float32' ).reshape([ nz, nx ])
-        'trup' : np.fromfile( files['trup'], dtype='np.float32' ).reshape([ nz, nx ])
-        'psv'  : np.fromfile( files['psv'], dtype='np.float32' ).reshape([ nz, nx ])
-        'tsm'  : np.fromfile( files['tsm'], dtype='np.float32', count=nx*ny ).reshape([ nz, nx ]) / 1e6 # read initial shear stresses
-        'tnm'  : np.fromfile( files['tnm'], dtype='np.float32', count=nx*ny ).reshape([ nz, nx ]) / 1e6 # read initial normal stresses
+        'x'    : xx,
+        'z'    : zz,
+        'su1'  : np.fromfile( files['su1'], dtype='np.float32' ).reshape([ nz, nx ]),
+        'su2'  : np.fromfile( files['su2'], dtype='np.float32' ).reshape([ nz, nx ]),
+        'trup' : np.fromfile( files['trup'], dtype='np.float32' ).reshape([ nz, nx ]),
+        'psv'  : np.fromfile( files['psv'], dtype='np.float32' ).reshape([ nz, nx ]),
+        'tsm'  : np.fromfile( files['tsm'], dtype='np.float32', count=nx*ny ).reshape([ nz, nx ]) / 1e6, # read initial shear stresses
+        'tnm'  : np.fromfile( files['tnm'], dtype='np.float32', count=nx*ny ).reshape([ nz, nx ]) / 1e6, # read initial normal stresses
     }
-    data['vrup'] = utils.compute_rupture_velocity( trup, dx, cs=vs )
-    data['sum']  = np.sqrt( su1**2 + su2**2 )
+    data['vrup'] = utils.compute_rupture_velocity( trup, dx, cs=vs ),
+    data['sum']  = np.sqrt( su1**2 + su2**2 ),
     data['mu0']  = tsm / np.absolute(tnm)
 
     clabel = {
@@ -169,7 +171,7 @@ def process_dynamic_rupture_simulation( params ):
                                     'std_slip_sa': data_sample['sum'].std(),
                                     'std_psv_sa': data_sample['psv'].std(),
                                     'std_vrup_sa': data_sample['vrup'].std(),
-                                    }
+                              }
 
 
     # compute histograms 
@@ -177,8 +179,8 @@ def process_dynamic_rupture_simulation( params ):
             bins = np.sqrt(len(data_sample.index)), 
             normed = 1, 
             columns = ['mu0','sum','psv','vrup'], 
-            color='k', 
-            alpha=0.5
+            color = 'k', 
+            alpha = 0.5
     )
     fig = _get_figure( ax )
     fig.savefig( os.path.join( figdir, 'hist.png' ), dpi=300 )

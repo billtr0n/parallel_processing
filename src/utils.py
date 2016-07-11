@@ -675,28 +675,27 @@ def get_backends():
 
     # filter all files in that directory to identify all files which provide a backend
     backend_fnames = filter(is_backend_module, os.listdir(backends_dir))
-
     backends = [backend_fname_formatter(fname) for fname in backend_fnames]
 
     print backends
 
 
-def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clabel=None, xlabel=None, ylabel=None, surface_plot=False, contour=False, **kwargs ):
-        """Plots 2d array with modified colorbar and extra options.
+def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clabel=None, xlabel=None, 
+                   ylabel=None, surface_plot=False, contour=False, **kwargs ):
+    """Plots 2d array with modified colorbar and extra options.
 
-        Args:
-            input (ndarray)      : (list) 2d array to be plotted, (dict) if contour is True dict will contain 
-                                   the 2d array that will be used for contouring under the key 'contour'
-            nx (int)             : number of nodes in x direction
-            nz (int)             : number of nodes in z direction
-            dx (float)           : grid spacing
-            label (str)           : units of array, e.g. if array contains velocities units would be 'Velocity (m/s)'
-            surface_plot (bool)  : plot axis above 2d image plot showing the surface trace of array
-            contour (bool)       : add contour to 2d image, if input is dict plot input['contour'] as the contour
-                                   else plot the contour of input
-        """
-
-
+    Args:
+        input (ndarray)      : (list) 2d array to be plotted, (dict) if contour is True dict will contain 
+                               the 2d array that will be used for contouring under the key 'contour'
+        nx (int)             : number of nodes in x direction
+        nz (int)             : number of nodes in z direction
+        dx (float)           : grid spacing
+        label (str)           : units of array, e.g. if array contains velocities units would be 'Velocity (m/s)'
+        surface_plot (bool)  : plot axis above 2d image plot showing the surface trace of array
+        contour (bool)       : add contour to 2d image, if input is dict plot input['contour'] as the contour
+                               else plot the contour of input
+        **kwargs (dict)      : any args to be passed on
+    """
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
     from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -765,7 +764,7 @@ def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clab
     fig.savefig( os.path.join(params['cwd'], filename), dpi=300 )
     return
 
-def compute_rupture_velocity(trup, dx, cs=vs):
+def compute_rupture_velocity(trup, dx, cs=3464.0):
     material = np.loadtxt( os.path.join(params['cwd'], 'bbp1d_1250_dx_25.asc') )
     if isinstance(vs, np.ndarray):
         cs = ml.repmat(vs[:-1],nx,1).T * 1e3
@@ -787,15 +786,16 @@ def parse_simulation_details( cwd, write = False ):
     # data structure for simulation.
     data = {}
     data['parameters'] = {}
+    data['fieldio'] = {}
 
     exclude = ['json', 'lvars', 'shape', 'xi', 'indices']
     for var, val in lvars.items():
         # exclude builtin types and json import
         if not var.startswith('__') and var not in exclude:
             if var == 'fieldio':
-                ins, outs = _parse_fieldio(val, eval('shape'), eval('indices'))
-                data['inputs'] = ins
-                data['outputs'] = outs
+                inputs, outputs = _parse_fieldio(val, eval('shape'), eval('indices'))
+                data['fieldio']['inputs'] = inputs
+                data['fieldio']['outputs'] = outputs
             else:
                 data['parameters'][var] = eval(var)
 
@@ -806,7 +806,7 @@ def parse_simulation_details( cwd, write = False ):
         with open('test2.js', 'w') as fh:
             json.dump(data, fh, indent=2)
 
-"""turns meta.py file into json object using eval, this might be very risky, but I trust myself"""
+"""turns meta.py file into json object using eval, this is very risky, but I trust myself"""
 def _parse_fieldio(fieldio, shape, indices):
     inputs = []
     outputs = []

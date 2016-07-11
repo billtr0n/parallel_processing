@@ -1,5 +1,6 @@
 from multiprocessing import JoinableQueue
 from workers import SimpleTaskWorker
+import logging
 
 class SimpleTaskWorkerManager( object ): # os.cpu_count() also for default?
     """
