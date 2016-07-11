@@ -1,6 +1,6 @@
 pytaskmanager
 ---
-General description of what the project is.
+load balancing framework written in python with some extra code for processing earthquake simulations.
 
 ### Getting Started
 Eventually we will have a script that will install all the requirements via pip that a user can use. Also a few examples of how to run the code go here as code blocks.
