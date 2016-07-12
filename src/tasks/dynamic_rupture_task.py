@@ -22,11 +22,11 @@ def process_dynamic_rupture_simulation( params ):
     import numpy as np
     import pandas as pd
 
-    import logging
-    import os
+    import logging, os, shutil
 
     import utils
 
+    """ Model setup, this will return false in ready method of class when written """
     # parse simulation details into dict
     try:
         simulation = utils.parse_simulation_details( params['cwd'], write=False )
@@ -34,20 +34,29 @@ def process_dynamic_rupture_simulation( params ):
         logging.error('unable to parse meta.py file. skipping simulation.')
         return False
 
+    # copy necessary files
+    try:
+        # temporary until i get fortran codes implemented
+        shutil.copy( os.path.join(params['script_dir'], 'bbp1d_1250_dx_25.asc'), params['cwd'] )
+    except IOError:
+        print 'unable to copy necessary files.'
+        return False
+
     # get necessary params for evaluation
     try:
         nn = simulation['parameters']['nn']
-        ihypo = simulation['parameters']['ihypo']
         cwd = params['cwd']
         nx = nn[0]
         nz = nn[1]
+        dx = simulation['parameters']['dx'][0]
+        ihypo = np.array(simulation['parameters']['ihypo'])*dx
         outdir = os.path.join(cwd, 'out')
         figdir = os.path.join(cwd, 'figs')
         datadir = os.path.join(cwd, 'data')
         if not os.path.exists( figdir ):
-            os.makedir( figdir )
+            os.mkdir( figdir )
         if not os.path.exists( datadir ):
-            os.makedir( datadir )
+            os.mkdir( datadir )
     except KeyError:
         logging.error('missing required params. aborting.')
         return False
@@ -71,25 +80,32 @@ def process_dynamic_rupture_simulation( params ):
     # TODO: Make simulation a class. right now i didn't, bc it just stores data no functionality needed
     ex = dx * nx
     ez = dx * nz
-    x = np.arange( 0,ex,dx )
-    z = np.arange( 0,ez,dx )
+    x = np.arange( 0, ex, dx )
+    z = np.arange( 0, ez, dx )
     xx, zz = np.meshgrid( x, z )
     material = np.loadtxt( os.path.join(params['cwd'], 'bbp1d_1250_dx_25.asc') )
     vs = material[:,3]
-    data = {
-        'x'    : xx,
-        'z'    : zz,
-        'su1'  : np.fromfile( files['su1'], dtype='np.float32' ).reshape([ nz, nx ]),
-        'su2'  : np.fromfile( files['su2'], dtype='np.float32' ).reshape([ nz, nx ]),
-        'trup' : np.fromfile( files['trup'], dtype='np.float32' ).reshape([ nz, nx ]),
-        'psv'  : np.fromfile( files['psv'], dtype='np.float32' ).reshape([ nz, nx ]),
-        'tsm'  : np.fromfile( files['tsm'], dtype='np.float32', count=nx*ny ).reshape([ nz, nx ]) / 1e6, # read initial shear stresses
-        'tnm'  : np.fromfile( files['tnm'], dtype='np.float32', count=nx*ny ).reshape([ nz, nx ]) / 1e6, # read initial normal stresses
-    }
-    data['vrup'] = utils.compute_rupture_velocity( trup, dx, cs=vs ),
-    data['sum']  = np.sqrt( su1**2 + su2**2 ),
-    data['mu0']  = tsm / np.absolute(tnm)
+    try:
+        data = {
+            'x'    : xx,
+            'z'    : zz,
+            'su1'  : np.fromfile( files['su1'], dtype=np.float32 ).reshape([ nz, nx ]),
+            'su2'  : np.fromfile( files['su2'], dtype=np.float32 ).reshape([ nz, nx ]),
+            'trup' : np.fromfile( files['trup'], dtype=np.float32 ).reshape([ nz, nx ]),
+            'psv'  : np.fromfile( files['psv'], dtype=np.float32 ).reshape([ nz, nx ]),
+            'tsm'  : np.fromfile( files['tsm'], dtype=np.float32, count=nx*nz ).reshape([ nz, nx ]) / 1e6, # read initial shear stresses
+            'tnm'  : np.fromfile( files['tnm'], dtype=np.float32, count=nx*nz ).reshape([ nz, nx ]) / 1e6, # read initial normal stresses
+        }
+        # calculate some things
+        data['vrup'] = utils.compute_rupture_velocity( data['trup'], dx, cs=vs )
+        data['sum']  = np.sqrt( data['su1']**2 + data['su2']**2 )
+        data['mu0']  = data['tsm'] / np.absolute(data['tnm'])
+    except Exception as e:
+        print "error: %s" % str(e)
+        return False
 
+
+    """ plot kinematic fields """
     clabel = {
         'su1' : r'$u_x$ (m)',
         'su2' : r'$u_z$ (m)',
@@ -101,22 +117,20 @@ def process_dynamic_rupture_simulation( params ):
         'sum' : r'$|u| (m)$',
         'mu0' : r'$\mu_0$',
     }
-
-    """ plot kinematic fields """
+    
     for field in data:
         if field not in ['x','z']:
-            if field in ['sum', 'su1','su2']:
-                inp = { 
-                        'data'    : data[field], 
-                        'contour' : data['trup'],
-                      }
+            print 'plotting %s' % field
+            if field in ['sum','su1','su2']:
+                inp = { 'data'    : data[field], 
+                        'contour' : data['trup'] }
                 utils.plot_2d_image( inp, filename=os.path.join(figdir, field + '.png'),
-                    nx=nx, nz=nz, dx=dx, clabel=clabel[field], xlabel='Distance (km)', ylabel='Depth (km)', 
+                    nx=nx, nz=nz, dx=dx*1e-3, clabel=clabel[field], xlabel='Distance (km)', ylabel='Depth (km)', 
                     surface_plot=True, contour=True )
             else:
-                utils.plot_2d_image( inp, filename=os.path.join(figdir, field + '.png'),
-                    nx=nx, nz=nz, dx=dx, clabel=clabel[field], xlabel='Distance (km)', ylabel='Depth (km)', 
-                    surface_plot=False, contour=False )
+                utils.plot_2d_image( data[field], filename=os.path.join(figdir, field + '.png'),
+                        nx=nx, nz=nz, dx=dx*1e-3, clabel=clabel[field], xlabel='Distance (km)', ylabel='Depth (km)', 
+                        surface_plot=False, contour=False )
 
 
     """ calculate one-point statistics 
@@ -130,12 +144,13 @@ def process_dynamic_rupture_simulation( params ):
     """
     
     include = ['sum', 'vrup', 'psv', 'mu0', 'x', 'z']
+    temp = {}
     for key in data:
-        if key not in include:
-            data[key] = data[key].raveled()
+        if key in include:
+            temp[key] = data[key].ravel()
 
     # write old data
-    data = pd.DataFrame( data = data )
+    data = pd.DataFrame( data = temp )
     
     rcrit = 4000
     data_trimmed = pd.concat([
@@ -146,13 +161,14 @@ def process_dynamic_rupture_simulation( params ):
                 # remove velocity strengthening, this will be analyzed and implemented later
                 data[ data['z'] > 4000 ],
                 # remove super-shear
-                data[ data['vrup'] < 1.0],
+                data[ (data['vrup'] < 1.0) & (data['vrup'] > 0.5) ],
                 # remove areas that did not rupture
-                data[ (data['slip'] > 0.1) & (data['slip'] < 1e9)],
+                data[ (data['sum'] > 0.4) & (data['sum'] < 1e9)],
     ]).reset_index().drop_duplicates(subset='index').set_index('index')
 
+
     # take 20% sample of the data
-    data_sample = data_trimmed.sample( frac=0.2 )
+    data_sample = data_trimmed.sample( n=10000 )
 
     # store one-point statistics
     simulation['one_point'] = {
@@ -178,17 +194,17 @@ def process_dynamic_rupture_simulation( params ):
     ax = data_sample.hist( 
             bins = np.sqrt(len(data_sample.index)), 
             normed = 1, 
-            columns = ['mu0','sum','psv','vrup'], 
-            color = 'k', 
-            alpha = 0.5
+            column = ['mu0','sum','psv','vrup'], 
     )
     fig = _get_figure( ax )
     fig.savefig( os.path.join( figdir, 'hist.png' ), dpi=300 )
 
     """ write out csv files """
+    print 'writing csv files'
+    logging.info('writing csv files')
     data_trimmed.to_csv( os.path.join(datadir, 'data_trimmed.csv') )
-    data_sampled.to_csv( os.path.join(datadir, 'data_sampled.csv') )
-    one_point = pd.DataFrame( simulation_data['one_point'] ).to_csv( os.path.join(datadir, 'one_point.csv') )
+    data_sample.to_csv( os.path.join(datadir, 'data_sampled.csv') )
+    one_point = pd.Series( simulation['one_point'] ).to_csv( os.path.join(datadir, 'one_point.csv') )
 
 
     """ generate markdown file """

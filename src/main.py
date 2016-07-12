@@ -14,21 +14,22 @@ from tasks.dynamic_rupture_task import process_dynamic_rupture_simulation
 def main():
     # this dict is used to pass arguments needed for tasks
     home_dir = os.getcwd()
-    params = {
-             'root_dir'    : '/media/sf_Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
-             'script_dir'  : '/media/sf_Dropbox/Current/processing/utils',
-             'script_name' : 'gmpe_calc.m',
-             'home_dir'    :  home_dir,
-             }
-
     # params = {
-    #          'root_dir'    : '/Users/williamsavran/Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
-    #          'script_dir'  : '/Users/williamsavran/Dropbox/Current/processing/utils',
+    #          'root_dir'    : '/media/sf_Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
+    #          'script_dir'  : '/media/sf_Dropbox/Current/processing/utils',
     #          'script_name' : 'gmpe_calc.m',
-    #          'home_dir'    : home_dir,
+    #          'home_dir'    :  home_dir,
     #          }
+
+    params = {
+             #'root_dir'    : '/Users/williamsavran/Dropbox/Current/simulations/5mpa_a007_mu0_0.225_eq_co_1mpa',
+             'root_dir' : '/Users/williamsavran/Dropbox/Current/simulations/testing',
+             'script_dir'  : '/Users/williamsavran/Dropbox/Current/processing/utils',
+             'script_name' : 'gmpe_calc.m',
+             'home_dir'    : home_dir,
+             }
              
-    """ initialize log in directory above root_dir and record year, month, day"""
+    """ initialize log in directory above root_dir and record year, month, day """
     logging.basicConfig( filename = os.path.join( os.path.dirname( params['root_dir'] ), 
                                             'tasks-' + time.strftime("%Y%m%d") + '.log' ),
                          level = logging.INFO 

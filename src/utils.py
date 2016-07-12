@@ -696,45 +696,57 @@ def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clab
                                else plot the contour of input
         **kwargs (dict)      : any args to be passed on
     """
+    import matplotlib
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg as FigureCanvas
     from mpl_toolkits.axes_grid1 import make_axes_locatable
+    from matplotlib.pyplot import colorbar
+    import os
+
+    matplotlib.rcParams['xtick.direction'] = 'out'
+    matplotlib.rcParams['ytick.direction'] = 'out'
 
     fig = Figure()
     canvas = FigureCanvas(fig)
+    ax = fig.add_subplot(111)
 
     # fast x convention
-    if not nx:
-        nx = input.shape[1]
-    if not nz:
-        nz = input.shape[0]
-
     ex = nx * dx
-    ez = nz * dz
-    im = ax.imshow(input, extent=(0, ex, 0, ez), origin='normal',cmap=palette)
+    ez = nz * dx
 
+    # handle different input types
+    if isinstance(input, np.ndarray):
+        data = input
+        contour_self = True
+    else:
+        data = input['data']
+        contour_data = input['contour']
+        contour_self = False
+
+    # plot axis
+    im = ax.imshow(data, extent=(0, ex, 0, ez), origin='normal')
+
+    # contour
     if contour:
-        x = np.arange(0,ex,dx*1e-3)
-        z = np.arange(0,ez,dx*1e-3)
+        x = np.arange(0,ex,dx)
+        z = np.arange(0,ez,dx)
         xx, zz = np.meshgrid(x,z)
         v = 0.75 * np.arange(-20,20)
-    if isinstance(input, np.ndarray):
-        ctrup = ax.contour( xx, zz, input, v, 
+        if contour_self:
+            ctrup = ax.contour( xx, zz, data, v, 
                             extent=(0, ex, 0, ez), colors='gray', 
                             linewidths=0.25, antialiased=False )
-    else:
-        ctrup = ax.contour( xx, zz, input['contour'], v, 
+        else:
+            ctrup = ax.contour( xx, zz, contour_data, v, 
                             extent=(0, ex, 0, ez), colors='gray', 
                             linewidths=0.25, antialiased=False )
 
-        # ignore contour part, we're done with it
-        input = input['data']
 
     # create an axes on the right side of ax. The width of cax will be 5%
     # of ax and the padding between cax and ax will be fixed at 0.05 inch.
     divider = make_axes_locatable(ax)
     cax = divider.append_axes("right", size="5%", pad=0.05)
-    cbar = np.colorbar(im, cax=cax)
+    cbar = colorbar(im, cax=cax)
     cbar.solids.set_rasterized(True)
     cbar.solids.set_edgecolor("face")
     cbar.set_label(label=clabel, size=14)
@@ -742,12 +754,13 @@ def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clab
     ax.set_xlim([0,ex])
     ax.set_xlabel(xlabel, fontsize=14)
     ax.set_ylabel(ylabel, fontsize=14)
-    im.set_clim([0,input.max()])
+    im.set_clim([data.min(),data[np.where(data < 1e9)].max()]) # hacky
 
     if surface_plot:
+        x = np.arange(0,ex,dx)
         tax = divider.append_axes("top", size="25%", pad=0.05)
-        tax.plot(x, slip1[0,:], 'k')
-        tax.set_yticks([0, slip[0,:].max()])
+        tax.plot(x, data[0,:], 'k')
+        tax.set_yticks([0, data[0,:].max()])
         tax.tick_params(
                 axis = 'x',
                 which = 'both',
@@ -761,13 +774,17 @@ def plot_2d_image( input, filename='default.pdf', nx=None, nz=None, dx=1.0, clab
         ticks[0].set_verticalalignment('top')
         ax.tick_params(axis='x', top = 'off', labeltop = 'off')
 
-    fig.savefig( os.path.join(params['cwd'], filename), dpi=300 )
+    fig.savefig( filename, dpi=300 )
     return
 
 def compute_rupture_velocity(trup, dx, cs=3464.0):
-    material = np.loadtxt( os.path.join(params['cwd'], 'bbp1d_1250_dx_25.asc') )
-    if isinstance(vs, np.ndarray):
-        cs = ml.repmat(vs[:-1],nx,1).T * 1e3
+    import os
+    import numpy as np
+    import numpy.matlib as ml
+
+    ny,nx = trup.shape
+    if isinstance(cs, np.ndarray):
+        cs = ml.repmat(cs[:-1],nx,1).T * 1e3
     trup_ma = np.ma.masked_values( trup, 1e9 )
     gy, gx = np.absolute( np.gradient( trup_ma ) )
     ttime = np.sqrt( gy**2 + gx**2 )
@@ -778,7 +795,10 @@ def compute_rupture_velocity(trup, dx, cs=3464.0):
 def parse_simulation_details( cwd, write = False ):
     import os
     # read meta.py file
-    exec( open( os.path.join(cwd, 'meta.py')).read() )
+    try:
+        exec( open( os.path.join(cwd, 'meta.py')).read() )
+    except Exception as e:
+        print str(e)
 
     # get list of local variables
     lvars = locals()
@@ -805,6 +825,8 @@ def parse_simulation_details( cwd, write = False ):
         import json
         with open('test2.js', 'w') as fh:
             json.dump(data, fh, indent=2)
+
+    return data
 
 """turns meta.py file into json object using eval, this is very risky, but I trust myself"""
 def _parse_fieldio(fieldio, shape, indices):
