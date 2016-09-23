@@ -1,6 +1,7 @@
 pytaskmanager
 ---
-start to asynchronous framework for use in django projects.  currently not working on this.
+offline processing module for working on simulations.  development mostly stopped on this to work 
+on pyorogeny which attempts to put these processing routines inside of a web application.
 
 ### Getting Started
 Eventually we will have a script that will install all the requirements via pip that a user can use. Also a few examples of how to run the code go here as code blocks.
