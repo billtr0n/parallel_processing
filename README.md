@@ -1,6 +1,6 @@
 pytaskmanager
 ---
-load balancing framework written in python with some extra code for processing earthquake simulations.
+start to asynchronous framework for use in django projects.  currently not working on this.
 
 ### Getting Started
 Eventually we will have a script that will install all the requirements via pip that a user can use. Also a few examples of how to run the code go here as code blocks.
