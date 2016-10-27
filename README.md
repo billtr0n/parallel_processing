@@ -1,7 +1,8 @@
-pytaskmanager
+parallel processing for simulations
 ---
-offline processing module for working on simulations.  development mostly stopped on this to work 
-on pyorogeny which attempts to put these processing routines inside of a web application.
+offline processing module for working on simulations. implements a worker based queue to allow for parallel 
+processing of simulations.  started out as the framework to an application that creates specific data products 
+from simulations.
 
 ### Getting Started
 Eventually we will have a script that will install all the requirements via pip that a user can use. Also a few examples of how to run the code go here as code blocks.
